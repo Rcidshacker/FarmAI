@@ -15,8 +15,11 @@ import {
 import { NeonButton } from '../components/ui/NeonButton';
 import { cn } from "../lib/utils";
 import { useEffect, useRef } from 'react';
+import { Camera as CapacitorCamera, CameraResultType, CameraSource } from '@capacitor/camera';
+import { useTranslation } from 'react-i18next';
 
 const DiseaseDetection = () => {
+    const { t } = useTranslation();
     const [file, setFile] = useState(null);
     const [preview, setPreview] = useState(null);
     const [windSpeed, setWindSpeed] = useState(5.0);
@@ -61,19 +64,41 @@ const DiseaseDetection = () => {
     const startCamera = async () => {
         setCameraError(null);
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'environment' } // Prefer back camera on mobile
-            });
-            setIsCameraActive(true);
-            // Small delay to ensure ref is mounted
-            setTimeout(() => {
-                if (videoRef.current) {
-                    videoRef.current.srcObject = stream;
-                }
-            }, 100);
+            // Try Capacitor camera first (for mobile)
+            if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+                const image = await CapacitorCamera.getPhoto({
+                    quality: 90,
+                    allowEditing: false,
+                    resultType: CameraResultType.Uri,
+                    source: CameraSource.Camera,
+                    correctOrientation: true,
+                });
+
+                // Convert URI to Blob
+                const response = await fetch(image.webPath);
+                const blob = await response.blob();
+                const fileName = image.path || "captured_image.jpg";
+                const file = new File([blob], fileName, { type: blob.type });
+                
+                setFile(file);
+                setPreview(image.webPath);
+                setResult(null);
+            } else {
+                // Web fallback: Use getUserMedia
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment' } // Prefer back camera on mobile
+                });
+                setIsCameraActive(true);
+                // Small delay to ensure ref is mounted
+                setTimeout(() => {
+                    if (videoRef.current) {
+                        videoRef.current.srcObject = stream;
+                    }
+                }, 100);
+            }
         } catch (err) {
             console.error("Camera Access Error:", err);
-            setCameraError("Camera permission denied or not available. Please upload a file.");
+            setCameraError("Camera permission denied or not available. Please upload a file instead.");
         }
     };
 
@@ -193,9 +218,9 @@ const DiseaseDetection = () => {
         <div className="min-h-screen bg-gray-50/50 p-6 pb-24">
             <div className="max-w-6xl mx-auto">
                 <div className="text-center mb-10">
-                    <h1 className="text-3xl font-bold text-green-800 mb-2">Visual Disease Detection</h1>
+                    <h1 className="text-3xl font-bold text-green-800 mb-2">{t('diseaseDetection.title')}</h1>
                     <p className="text-gray-500 max-w-lg mx-auto">
-                        Upload a photo of your crop to instantly identify diseases and receive AI-driven treatment recommendations.
+                        {t('diseaseDetection.description')}
                     </p>
                 </div>
 
@@ -206,7 +231,7 @@ const DiseaseDetection = () => {
                         <div className="p-1 bg-green-50/50 border-b border-green-100">
                             <div className="flex items-center gap-2 px-4 py-2 text-green-700 font-medium text-sm">
                                 <Camera className="h-4 w-4" />
-                                <span>Image Analysis</span>
+                                <span>{t('diseaseDetection.imageAnalysis')}</span>
                             </div>
                         </div>
 
@@ -251,7 +276,7 @@ const DiseaseDetection = () => {
                                                     type="button"
                                                     onClick={stopCamera}
                                                     className="p-3 bg-red-500/80 hover:bg-red-600 text-white rounded-full backdrop-blur-sm transition-transform active:scale-95"
-                                                    title="Cancel Camera"
+                                                    title={t('diseaseDetection.cancelCamera')}
                                                 >
                                                     <X className="h-6 w-6" />
                                                 </button>
@@ -259,7 +284,7 @@ const DiseaseDetection = () => {
                                                     type="button"
                                                     onClick={capturePhoto}
                                                     className="h-16 w-16 bg-white rounded-full border-4 border-gray-300 ring-4 ring-white/50 active:scale-90 transition-all flex items-center justify-center shadow-lg"
-                                                    title="Take Photo"
+                                                    title={t('diseaseDetection.takePhoto')}
                                                 >
                                                     <div className="h-12 w-12 bg-gray-100 rounded-full border-2 border-gray-300"></div>
                                                 </button>
@@ -286,13 +311,13 @@ const DiseaseDetection = () => {
                                                     >
                                                         <Camera className="h-10 w-10 text-green-700" />
                                                     </button>
-                                                    <h3 className="text-xl font-bold text-gray-800 mb-1">Take a Photo</h3>
-                                                    <p className="text-sm text-gray-500">Use device camera to scan leaf</p>
+                                                    <h3 className="text-xl font-bold text-gray-800 mb-1">{t('diseaseDetection.takePhotoTitle')}</h3>
+                                                    <p className="text-sm text-gray-500">{t('diseaseDetection.takePhotoDesc')}</p>
                                                 </div>
 
                                                 <div className="flex items-center gap-3 w-full max-w-xs mb-6">
                                                     <div className="h-px bg-green-200 flex-1"></div>
-                                                    <span className="text-xs font-semibold text-green-400 uppercase tracking-widest">OR</span>
+                                                    <span className="text-xs font-semibold text-green-400 uppercase tracking-widest">{t('diseaseDetection.or')}</span>
                                                     <div className="h-px bg-green-200 flex-1"></div>
                                                 </div>
 
@@ -303,7 +328,7 @@ const DiseaseDetection = () => {
                                                     className="w-full flex flex-col items-center justify-center p-4 bg-white border-2 border-dashed border-green-200 rounded-2xl hover:bg-green-50 hover:border-green-300 transition-all shadow-sm active:scale-95"
                                                 >
                                                     <Upload className="h-6 w-6 text-green-600 mb-2" />
-                                                    <span className="text-green-800 font-bold text-sm">Upload from Gallery</span>
+                                                    <span className="text-green-800 font-bold text-sm">{t('diseaseDetection.uploadGallery')}</span>
                                                 </button>
 
                                                 {cameraError && (
@@ -322,7 +347,7 @@ const DiseaseDetection = () => {
                                 <div className="grid grid-cols-2 gap-4 mt-6">
                                     <div className="space-y-2">
                                         <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider ml-1">
-                                            Wind Speed (Auto)
+                                            {t('diseaseDetection.windSpeed')}
                                         </label>
                                         <div className="relative group">
                                             <Wind className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-green-600" />
@@ -334,7 +359,7 @@ const DiseaseDetection = () => {
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider ml-1">
-                                            Density
+                                            {t('diseaseDetection.density')}
                                         </label>
                                         <div className="relative group">
                                             <Layers className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-green-500 transition-colors" />
@@ -343,9 +368,9 @@ const DiseaseDetection = () => {
                                                 onChange={(e) => setFruitDensity(e.target.value)}
                                                 className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all font-medium text-gray-700 appearance-none cursor-pointer"
                                             >
-                                                <option>Low</option>
-                                                <option>Medium</option>
-                                                <option>High</option>
+                                                <option>{t('diseaseDetection.low')}</option>
+                                                <option>{t('diseaseDetection.medium')}</option>
+                                                <option>{t('diseaseDetection.high')}</option>
                                             </select>
                                             <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
                                                 <div className="border-t-4 border-l-4 border-transparent border-t-gray-400"></div>
@@ -367,12 +392,12 @@ const DiseaseDetection = () => {
                                         {loading ? (
                                             <div className="flex items-center gap-2 justify-center">
                                                 <Loader2 className="h-5 w-5 animate-spin" />
-                                                <span>Analyzing...</span>
+                                                <span>{t('diseaseDetection.analyzing')}</span>
                                             </div>
                                         ) : (
                                             <div className="flex items-center gap-2 justify-center">
                                                 <Activity className="h-5 w-5" />
-                                                <span>Analyze Image</span>
+                                                <span>{t('diseaseDetection.analyzeImage')}</span>
                                             </div>
                                         )}
                                     </NeonButton>
@@ -387,7 +412,7 @@ const DiseaseDetection = () => {
                         {loading ? (
                             <div className="bg-white rounded-3xl shadow-lg border border-green-100 overflow-hidden flex flex-col items-center justify-center p-8 min-h-[400px]">
                                 <div className="max-w-xs w-full space-y-6">
-                                    <h3 className="text-xl font-bold text-gray-800 text-center mb-6">Analyzing Crop Health</h3>
+                                    <h3 className="text-xl font-bold text-gray-800 text-center mb-6">{t('diseaseDetection.analyzingHealth')}</h3>
 
                                     {/* Checklist Items */}
                                     <div className="space-y-4">
@@ -399,7 +424,7 @@ const DiseaseDetection = () => {
                                                 <Loader2 className="h-6 w-6 text-green-600 animate-spin" />
                                             )}
                                             <span className={cn("text-sm font-medium", analysisStep > 1 ? "text-gray-900" : "text-gray-500")}>
-                                                Processing Image
+                                                {t('diseaseDetection.processingImage')}
                                             </span>
                                         </div>
 
@@ -413,7 +438,7 @@ const DiseaseDetection = () => {
                                                 <div className="w-6 h-6 rounded-full border-2 border-gray-200"></div>
                                             )}
                                             <span className={cn("text-sm font-medium", analysisStep > 2 ? "text-gray-900" : "text-gray-500")}>
-                                                Scanning Leaf & Fruit Texture
+                                                {t('diseaseDetection.scanning')}
                                             </span>
                                         </div>
 
@@ -427,7 +452,7 @@ const DiseaseDetection = () => {
                                                 <div className="w-6 h-6 rounded-full border-2 border-gray-200"></div>
                                             )}
                                             <span className={cn("text-sm font-medium", analysisStep > 3 ? "text-gray-900" : "text-gray-500")}>
-                                                Correlating Weather Data
+                                                {t('diseaseDetection.correlating')}
                                             </span>
                                         </div>
 
@@ -441,7 +466,7 @@ const DiseaseDetection = () => {
                                                 <div className="w-6 h-6 rounded-full border-2 border-gray-200"></div>
                                             )}
                                             <span className={cn("text-sm font-medium", analysisStep > 4 ? "text-gray-900" : "text-gray-500")}>
-                                                Generating Diagnosis
+                                                {t('diseaseDetection.generating')}
                                             </span>
                                         </div>
                                     </div>
@@ -457,14 +482,14 @@ const DiseaseDetection = () => {
                                     <div className="relative z-10">
                                         <div className="flex justify-between items-start mb-2">
                                             <span className="bg-green-500/30 border border-green-400/30 px-3 py-1 rounded-full text-xs font-semibold tracking-wide uppercase">
-                                                Diagnosis Report
+                                                {t('diseaseDetection.diagnosisReport')}
                                             </span>
                                             <span className="font-mono font-bold text-2xl">
                                                 {(result.confidence * 100).toFixed(0)}%
                                             </span>
                                         </div>
                                         <h2 className="text-3xl font-bold mb-1">{result.disease}</h2>
-                                        <p className="text-green-100 text-sm">Detected with high confidence</p>
+                                        <p className="text-green-100 text-sm">{t('diseaseDetection.highConfidence')}</p>
                                     </div>
                                 </div>
 
@@ -473,7 +498,7 @@ const DiseaseDetection = () => {
                                     <div className="bg-green-50 rounded-2xl p-5 border border-green-100">
                                         <h3 className="flex items-center gap-2 font-bold text-green-900 mb-2">
                                             <CheckCircle className="h-5 w-5 text-green-600" />
-                                            Recommended Action
+                                            {t('diseaseDetection.recommendedAction')}
                                         </h3>
                                         <p className="text-green-800 leading-relaxed text-sm">
                                             {result.quick_action}
@@ -485,7 +510,7 @@ const DiseaseDetection = () => {
                                         <div className="bg-amber-50 rounded-2xl p-5 border border-amber-100">
                                             <h3 className="flex items-center gap-2 font-bold text-amber-900 mb-2">
                                                 <AlertTriangle className="h-5 w-5 text-amber-600" />
-                                                Risk Alert
+                                                {t('diseaseDetection.riskAlert')}
                                             </h3>
                                             <p className="text-amber-800 leading-relaxed text-sm">
                                                 {result.rubbing_risk_warning}
@@ -496,7 +521,7 @@ const DiseaseDetection = () => {
                                     {/* Other Possibilities */}
                                     <div>
                                         <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
-                                            Alternative Diagnoses
+                                            {t('diseaseDetection.alternativeDiagnoses')}
                                         </h4>
                                         <div className="space-y-3">
                                             {result.all_predictions.slice(1, 4).map((pred, idx) => (
@@ -523,9 +548,9 @@ const DiseaseDetection = () => {
                             // Placeholder State for Right Column
                             <div className="h-full min-h-[400px] border-2 border-dashed border-gray-200 rounded-3xl flex flex-col items-center justify-center text-gray-400 p-8 text-center bg-gray-50/50">
                                 <Activity className="h-16 w-16 mb-4 opacity-20" />
-                                <h3 className="text-lg font-semibold text-gray-500 mb-2">Ready to Analyze</h3>
+                                <h3 className="text-lg font-semibold text-gray-500 mb-2">{t('diseaseDetection.readyToAnalyze')}</h3>
                                 <p className="text-sm max-w-xs mx-auto">
-                                    Upload an image and set parameters to see detailed disease diagnosis and treatment plans here.
+                                    {t('diseaseDetection.readyDesc')}
                                 </p>
                             </div>
                         )}

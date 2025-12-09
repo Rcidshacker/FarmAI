@@ -1,30 +1,43 @@
 {
-  "name": "frontend",
+  "name": "farmai-mobile",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "android:build": "npm run build && npx cap sync android && npx cap open android",
+    "android:sync": "npx cap sync android",
+    "android:run": "npx cap run android"
   },
   "dependencies": {
+    "@capacitor/android": "^6.1.2",
+    "@capacitor/app": "^6.0.1",
+    "@capacitor/camera": "^6.0.1",
+    "@capacitor/core": "^6.1.2",
+    "@capacitor/haptics": "^6.0.1",
+    "@capacitor/keyboard": "^6.0.2",
+    "@capacitor/status-bar": "^6.0.1",
     "@splinetool/react-spline": "^4.1.0",
     "@splinetool/runtime": "^1.12.6",
     "axios": "^1.13.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "framer-motion": "^12.23.25",
+    "i18next": "^25.7.2",
     "lucide-react": "^0.556.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "react-i18next": "^16.4.0",
     "react-router-dom": "^7.10.1",
     "recharts": "^3.5.1",
     "tailwind-merge": "^3.4.0",
     "usehooks-ts": "^3.1.1"
   },
   "devDependencies": {
+    "@capacitor/cli": "^6.1.2",
     "@eslint/js": "^9.39.1",
     "@tailwindcss/postcss": "^4.1.17",
     "@types/react": "^19.2.5",
@@ -37,6 +50,7 @@
     "globals": "^16.5.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.17",
+    "typescript": "^5.9.3",
     "vite": "npm:rolldown-vite@7.2.5"
   },
   "overrides": {

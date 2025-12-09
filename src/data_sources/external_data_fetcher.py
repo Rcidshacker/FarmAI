@@ -98,14 +98,14 @@ class IMDWeatherFetcher:
             return {
                 'location': f"Lat: {lat}, Lon: {lon}",
                 'state': 'Unknown',
-                'temperature': current.get('temp', 0),
-                'humidity': current.get('humidity', 0),
-                'rainfall': current.get('precip', 0),  # VC returns 0 if no rain
-                'wind_speed': current.get('windspeed', 0),
+                'temperature': float(current.get('temp', 25)),
+                'humidity': float(current.get('humidity', 60)),
+                'rainfall': float(current.get('precip', 0)),  # VC returns 0 if no rain
+                'wind_speed': float(current.get('windspeed', 5)),
                 'datetime': datetime.now().isoformat()
             }
         except Exception as e:
-            logger.error(f"Error fetching Visual Crossing weather: {e}")
+            logger.warning(f"Error fetching Visual Crossing weather: {e}")
             return self._get_fallback_weather("Unknown")
     
     def get_forecast(self, location: str, days: int = 14, lat: Optional[float] = None, lon: Optional[float] = None) -> pd.DataFrame:
@@ -128,21 +128,25 @@ class IMDWeatherFetcher:
             for day_data in data.get('days', [])[:days]:
                 forecasts.append({
                     'datetime': pd.to_datetime(day_data['datetime']),
-                    'temp': day_data.get('temp'),          # Daily Mean
-                    'tempmax': day_data.get('tempmax'),    # Daily Max
-                    'tempmin': day_data.get('tempmin'),    # Daily Min
-                    'humidity': day_data.get('humidity'),
-                    'precip': day_data.get('precip', 0.0),
-                    'windspeed': day_data.get('windspeed', 0.0),
-                    'cloudcover': day_data.get('cloudcover', 0.0),
-                    'solarradiation': day_data.get('solarradiation', 0.0),
-                    'uvindex': day_data.get('uvindex', 0.0)
+                    'temp': float(day_data.get('temp', 25)),          # Daily Mean
+                    'tempmax': float(day_data.get('tempmax', 28)),    # Daily Max
+                    'tempmin': float(day_data.get('tempmin', 20)),    # Daily Min
+                    'humidity': float(day_data.get('humidity', 60)),
+                    'precip': float(day_data.get('precip', 0.0)),
+                    'windspeed': float(day_data.get('windspeed', 5.0)),
+                    'cloudcover': float(day_data.get('cloudcover', 0.0)),
+                    'solarradiation': float(day_data.get('solarradiation', 0.0)),
+                    'uvindex': float(day_data.get('uvindex', 0.0))
                 })
             
-            return pd.DataFrame(forecasts).sort_values('datetime')
+            if forecasts:
+                return pd.DataFrame(forecasts).sort_values('datetime')
+            else:
+                logger.warning("No forecast data received, using mock data")
+                return self._generate_mock_forecast(days)
             
         except Exception as e:
-            logger.error(f"Error fetching forecast from Visual Crossing: {e}")
+            logger.warning(f"Error fetching forecast from Visual Crossing: {e}")
             # Fallback to mock if API fails
             return self._generate_mock_forecast(days)
     

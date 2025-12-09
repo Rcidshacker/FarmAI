@@ -1,18 +1,45 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, MapPin, Ruler, Phone, LogOut, Edit2, Check, X, Camera } from 'lucide-react';
+import { User, MapPin, Ruler, Phone, LogOut, Edit2, Check, X, Camera, Plus, Trash2, Settings } from 'lucide-react';
 import { NeonButton } from '../components/ui/NeonButton';
+import { setApiUrl, getApiUrl, resetSprayHistory } from '../services/api';
 import defaultProfile from '../assets/default_profile.png';
+import LanguageSwitcher from '../components/LanguageSwitcher';
+import { useTranslation } from 'react-i18next';
 
 const ProfilePage = () => {
     const navigate = useNavigate();
+    const { t } = useTranslation();
     const [isEditing, setIsEditing] = useState(false);
+    const [showApiSettings, setShowApiSettings] = useState(false);
+    const [apiUrl, setApiUrlState] = useState(getApiUrl());
+    const [tempApiUrl, setTempApiUrl] = useState(apiUrl);
     const [profile, setProfile] = useState({
         name: "Guest Farmer",
         phone: "",
         location: "",
         landSize: "",
+        farms: []
     });
+    const [farms, setFarms] = useState([]);
+    const [newFarm, setNewFarm] = useState({ name: "", lat: "", lon: "" });
+    const [showAddFarm, setShowAddFarm] = useState(false);
+    const [isResetting, setIsResetting] = useState(false);
+
+    const handleResetHistory = async () => {
+        if (window.confirm("Are you sure you want to reset all spray history? This cannot be undone.")) {
+            setIsResetting(true);
+            try {
+                await resetSprayHistory();
+                alert("Spray history has been reset.");
+            } catch (error) {
+                console.error("Failed to reset history", error);
+                alert("Failed to reset history.");
+            } finally {
+                setIsResetting(false);
+            }
+        }
+    };
 
     useEffect(() => {
         const storedUser = localStorage.getItem('user');
@@ -24,7 +51,9 @@ const ProfilePage = () => {
                     phone: user.phone || "",
                     location: user.location?.name || "",
                     landSize: user.land_area_acres || "",
+                    farms: user.farms || []
                 });
+                setFarms(user.farms || []);
             } catch (e) {
                 console.error("Failed to parse user profile", e);
             }
@@ -40,7 +69,20 @@ const ProfilePage = () => {
     };
 
     const handleSave = () => {
-        // Here you would typically save to backend
+        // Save to localStorage
+        const storedUser = localStorage.getItem('user');
+        let user = storedUser ? JSON.parse(storedUser) : {};
+        
+        user = {
+            ...user,
+            name: profile.name,
+            phone: profile.phone,
+            location: { name: profile.location },
+            land_area_acres: profile.landSize,
+            farms: farms
+        };
+        
+        localStorage.setItem('user', JSON.stringify(user));
         setIsEditing(false);
     };
 
@@ -55,6 +97,42 @@ const ProfilePage = () => {
             ...prev,
             [name]: value
         }));
+    };
+
+    const handleAddFarm = () => {
+        if (newFarm.name && newFarm.lat && newFarm.lon) {
+            const farm = {
+                id: Date.now(),
+                name: newFarm.name,
+                latitude: parseFloat(newFarm.lat),
+                longitude: parseFloat(newFarm.lon),
+                addedDate: new Date().toLocaleDateString()
+            };
+            const updatedFarms = [...farms, farm];
+            setFarms(updatedFarms);
+            setProfile(prev => ({ ...prev, farms: updatedFarms }));
+            setNewFarm({ name: "", lat: "", lon: "" });
+            setShowAddFarm(false);
+        }
+    };
+
+    const handleDeleteFarm = (farmId) => {
+        const updatedFarms = farms.filter(f => f.id !== farmId);
+        setFarms(updatedFarms);
+        setProfile(prev => ({ ...prev, farms: updatedFarms }));
+    };
+
+    const handleSaveApiUrl = () => {
+        if (tempApiUrl.trim()) {
+            setApiUrl(tempApiUrl);
+            setApiUrlState(tempApiUrl);
+            setShowApiSettings(false);
+        }
+    };
+
+    const handleCancelApiSettings = () => {
+        setTempApiUrl(apiUrl);
+        setShowApiSettings(false);
     };
 
     return (
@@ -74,7 +152,7 @@ const ProfilePage = () => {
                     </div>
 
                     <div className="flex justify-center">
-                        <h1 className="text-xl font-bold text-gray-800">Profile</h1>
+                        <h1 className="text-xl font-bold text-gray-800">{t('profile.title')}</h1>
                     </div>
 
                     <div className="flex justify-end">
@@ -113,7 +191,7 @@ const ProfilePage = () => {
                     <div className="w-full space-y-5">
                         {/* Name */}
                         <div className="space-y-1.5">
-                            <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider ml-1">Name</label>
+                            <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider ml-1">{t('profile.name')}</label>
                             {isEditing ? (
                                 <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-xl border border-gray-200 focus-within:border-green-500 focus-within:ring-1 focus-within:ring-green-500 transition-all">
                                     <User size={18} className="text-gray-400" />
@@ -136,7 +214,7 @@ const ProfilePage = () => {
 
                         {/* Phone */}
                         <div className="space-y-1.5">
-                            <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider ml-1">Phone</label>
+                            <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider ml-1">{t('profile.phone')}</label>
                             {isEditing ? (
                                 <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-xl border border-gray-200 focus-within:border-green-500 focus-within:ring-1 focus-within:ring-green-500 transition-all">
                                     <Phone size={18} className="text-gray-400" />
@@ -159,7 +237,7 @@ const ProfilePage = () => {
 
                         {/* Location */}
                         <div className="space-y-1.5">
-                            <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider ml-1">Location</label>
+                            <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider ml-1">{t('profile.location')}</label>
                             {isEditing ? (
                                 <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-xl border border-gray-200 focus-within:border-green-500 focus-within:ring-1 focus-within:ring-green-500 transition-all">
                                     <MapPin size={18} className="text-gray-400" />
@@ -182,7 +260,7 @@ const ProfilePage = () => {
 
                         {/* Land Size */}
                         <div className="space-y-1.5">
-                            <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider ml-1">Total Land (Acres)</label>
+                            <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider ml-1">{t('profile.landSize')}</label>
                             {isEditing ? (
                                 <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-xl border border-gray-200 focus-within:border-green-500 focus-within:ring-1 focus-within:ring-green-500 transition-all">
                                     <Ruler size={18} className="text-gray-400" />
@@ -207,7 +285,164 @@ const ProfilePage = () => {
 
                     <div className="w-full h-px bg-gray-100 my-8" />
 
-                    {/* Logout Button */}
+                    {/* Farms Management Section */}
+                    <div className="w-full">
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-lg font-bold text-gray-800">{t('profile.farms')}</h2>
+                            {isEditing && (
+                                <NeonButton
+                                    onClick={() => setShowAddFarm(!showAddFarm)}
+                                    size="icon"
+                                    className="bg-green-500 text-white rounded-full hover:bg-green-600"
+                                    neon={false}
+                                >
+                                    <Plus size={16} />
+                                </NeonButton>
+                            )}
+                        </div>
+
+                        {showAddFarm && isEditing && (
+                            <div className="bg-green-50 p-4 rounded-xl border border-green-200 mb-4 space-y-3">
+                                <input
+                                    type="text"
+                                    placeholder="Farm name"
+                                    value={newFarm.name}
+                                    onChange={(e) => setNewFarm({ ...newFarm, name: e.target.value })}
+                                    className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
+                                />
+                                <div className="grid grid-cols-2 gap-2">
+                                    <input
+                                        type="number"
+                                        placeholder="Latitude"
+                                        value={newFarm.lat}
+                                        onChange={(e) => setNewFarm({ ...newFarm, lat: e.target.value })}
+                                        step="0.0001"
+                                        className="p-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
+                                    />
+                                    <input
+                                        type="number"
+                                        placeholder="Longitude"
+                                        value={newFarm.lon}
+                                        onChange={(e) => setNewFarm({ ...newFarm, lon: e.target.value })}
+                                        step="0.0001"
+                                        className="p-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
+                                    />
+                                </div>
+                                <NeonButton
+                                    onClick={handleAddFarm}
+                                    className="w-full bg-green-600 text-white rounded-lg hover:bg-green-700"
+                                    neon={false}
+                                >
+                                    {t('profile.addFarm')}
+                                </NeonButton>
+                            </div>
+                        )}
+
+                        <div className="space-y-2 max-h-48 overflow-y-auto">
+                            {farms.length > 0 ? (
+                                farms.map((farm) => (
+                                    <div key={farm.id} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg border border-gray-200">
+                                        <div className="flex-1">
+                                            <p className="font-semibold text-gray-800">{farm.name}</p>
+                                            <p className="text-xs text-gray-500">{farm.latitude.toFixed(4)}, {farm.longitude.toFixed(4)}</p>
+                                        </div>
+                                        {isEditing && (
+                                            <NeonButton
+                                                onClick={() => handleDeleteFarm(farm.id)}
+                                                size="icon"
+                                                className="bg-red-50 text-red-500 hover:bg-red-100 rounded-lg"
+                                                neon={false}
+                                            >
+                                                <Trash2 size={16} />
+                                            </NeonButton>
+                                        )}
+                                    </div>
+                                ))
+                            ) : (
+                                <p className="text-center text-gray-400 py-4 text-sm">No farms added yet</p>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="w-full h-px bg-gray-100 my-8" />
+
+                    {/* Language Settings */}
+                    <div className="w-full mb-4">
+                        <div className="flex items-center justify-between gap-3 p-4 bg-green-50 rounded-xl border border-green-200">
+                            <div className="flex items-center gap-3">
+                                <span className="text-green-700 font-semibold">{t('profile.language')}</span>
+                            </div>
+                            <LanguageSwitcher />
+                        </div>
+                    </div>
+
+                    {/* API Configuration Section */}
+                    <div className="w-full">
+                        <button
+                            onClick={() => {
+                                setTempApiUrl(apiUrl);
+                                setShowApiSettings(!showApiSettings);
+                            }}
+                            className="w-full flex items-center justify-between gap-3 p-4 bg-blue-50 hover:bg-blue-100 rounded-xl transition-all font-semibold mb-4 border border-blue-200"
+                        >
+                            <div className="flex items-center gap-3">
+                                <Settings size={20} className="text-blue-600" />
+                                <span className="text-blue-700">{t('profile.apiSettings')}</span>
+                            </div>
+                            <span className="text-xs bg-white px-2 py-1 rounded text-blue-600 font-mono">{apiUrl.split('://')[1] || apiUrl}</span>
+                        </button>
+
+                        {showApiSettings && (
+                            <div className="w-full bg-gradient-to-b from-blue-50 to-white p-4 rounded-xl border border-blue-200 mb-4">
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">{t('profile.backendUrl')}</label>
+                                <input
+                                    type="text"
+                                    value={tempApiUrl}
+                                    onChange={(e) => setTempApiUrl(e.target.value)}
+                                    placeholder="192.168.x.x:8000"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                                <p className="text-xs text-gray-600 mb-3">
+                                    Enter IP:Port (e.g., 192.168.1.5:8000). No need for http://
+                                </p>
+                                <div className="flex gap-2">
+                                    <NeonButton
+                                        onClick={handleSaveApiUrl}
+                                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg"
+                                        neon={false}
+                                    >
+                                        <Check size={16} className="inline mr-1" /> {t('profile.save')}
+                                    </NeonButton>
+                                    <NeonButton
+                                        onClick={handleCancelApiSettings}
+                                        className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 rounded-lg"
+                                        neon={false}
+                                    >
+                                        <X size={16} className="inline mr-1" /> {t('profile.cancel')}
+                                    </NeonButton>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="w-full h-px bg-gray-100 my-8" />
+
+                    {/* Data Management */}
+                    <div className="w-full mb-4">
+                        <NeonButton
+                            onClick={handleResetHistory}
+                            disabled={isResetting}
+                            className="w-full flex items-center justify-between gap-3 p-4 bg-amber-50 hover:bg-amber-100 rounded-xl transition-all font-semibold border border-amber-200 text-amber-700"
+                            neon={false}
+                        >
+                            <div className="flex items-center gap-3">
+                                <Trash2 size={20} className="text-amber-600" />
+                                <span>Reset Spray History</span>
+                            </div>
+                            {isResetting && <span className="text-xs">Resetting...</span>}
+                        </NeonButton>
+                    </div>
+
                     <NeonButton
                         onClick={() => {
                             localStorage.removeItem('token');
@@ -219,7 +454,7 @@ const ProfilePage = () => {
                         neon={false}
                     >
                         <LogOut size={20} className="group-hover:scale-110 transition-transform" />
-                        <span>Log Out</span>
+                        <span>{t('profile.logout')}</span>
                     </NeonButton>
 
                 </div>

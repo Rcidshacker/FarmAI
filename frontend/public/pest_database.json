@@ -1,0 +1,668 @@
+{
+  "pests_and_diseases": {
+    "Scale Insects": {
+      "scientific_name": "Coccoidea (Multiple species)",
+      "type": "pest",
+      "description": "Small, armored or soft-bodied sap-sucking insects that infest leaves and twigs. They cause yellowing, defoliation, and premature fruit drop by extracting plant nutrients.",
+      "symptoms": [
+        "Small brown or grey bumps on stems and leaves",
+        "Yellowing and wilting of infested leaves",
+        "Sticky honeydew secretion on leaves",
+        "Sooty mold growth on honeydew",
+        "Loss of plant vigor and stunted growth",
+        "Premature fruit drop",
+        "Twig dieback in severe cases"
+      ],
+      "favorable_conditions": {
+        "temperature_range": [22, 32],
+        "humidity_range": [50, 85],
+        "rainfall": "low to moderate",
+        "season": ["Rabi", "Summer"],
+        "notes": "Thrive in dry conditions with moderate temperatures"
+      },
+      "lifecycle": "45-60 days, 3-4 generations per year",
+      "economic_impact": "Moderate to High - can cause 20-35% yield loss if uncontrolled",
+      "treatments": [
+        {
+          "type": "chemical",
+          "name": "Buprofezin 25% SC",
+          "dosage": "1.5 ml/L water",
+          "application": "Foliar spray targeting infested twigs and leaves",
+          "frequency": "Every 21 days, maximum 2 applications",
+          "precautions": "Highly effective against juvenile stages, less on adults",
+          "preharvest_interval": "21 days",
+          "effectiveness": "82-88%"
+        },
+        {
+          "type": "chemical",
+          "name": "Spirotetramat 150 OD",
+          "dosage": "0.75 ml/L water",
+          "application": "Systemic spray, covers entire plant",
+          "frequency": "Every 25 days",
+          "precautions": "Works through plant sap, avoid rain within 2 hours",
+          "preharvest_interval": "25 days",
+          "effectiveness": "85-92%"
+        },
+        {
+          "type": "organic",
+          "name": "Horticultural Oil (Paraffinic)",
+          "dosage": "10 ml/L water",
+          "application": "Thorough coverage spray during cooler hours",
+          "frequency": "Every 10-12 days",
+          "precautions": "Spray in early morning or late evening, avoid high temperatures",
+          "preharvest_interval": "3 days",
+          "effectiveness": "70-78%"
+        },
+        {
+          "type": "biological",
+          "name": "Chilocorus nigritus (Predatory Beetle)",
+          "dosage": "Release 10-15 beetles per tree",
+          "application": "Release during early infestation",
+          "frequency": "One time release, beetles reproduce naturally",
+          "precautions": "Avoid chemical sprays for 30 days after release",
+          "preharvest_interval": "No restriction",
+          "effectiveness": "65-75%"
+        }
+      ],
+      "preventive_measures": [
+        "Prune heavily infested branches and destroy",
+        "Maintain proper plant spacing for air circulation",
+        "Apply sticky bands on trunks to trap crawlers",
+        "Encourage natural predators (ladybugs, parasitic wasps)",
+        "Regular monitoring during dry seasons",
+        "Apply dormant oil spray during winter",
+        "Remove alternate host plants nearby"
+      ],
+      "monitoring": {
+        "inspection_frequency": "Weekly during summer and rabi",
+        "key_indicators": ["Presence of scale bumps", "Leaf yellowing", "Sticky residue"],
+        "threshold": "Spray when 5-10% leaves are infested"
+      }
+    },
+    "White Flies": {
+      "scientific_name": "Bemisia tabaci, Trialeurodes vaporariorum",
+      "type": "pest",
+      "description": "Tiny white-winged insects that feed on plant sap and secrete honeydew. Whitefly nymphs are particularly damaging as they extract nutrients, causing leaf yellowing and reduced photosynthesis.",
+      "symptoms": [
+        "Clouds of small white flies when plant is disturbed",
+        "White nymphs on undersides of leaves",
+        "Yellowing and curling of leaves",
+        "Sticky honeydew on leaves and fruits",
+        "Black sooty mold growth on honeydew",
+        "Reduced photosynthesis and plant vigor",
+        "Leaf drop in severe infestations",
+        "Transmission of viral diseases (optional vector)"
+      ],
+      "favorable_conditions": {
+        "temperature_range": [25, 35],
+        "humidity_range": [55, 80],
+        "rainfall": "low rainfall, dry periods",
+        "season": ["Summer", "Post-monsoon"],
+        "notes": "Population explodes during hot dry weather"
+      },
+      "lifecycle": "25-30 days at optimal temperature, multiple overlapping generations",
+      "economic_impact": "Moderate - can cause 15-30% yield reduction, indirect damage through sooty mold",
+      "treatments": [
+        {
+          "type": "chemical",
+          "name": "Diafenthiuron 50% WP",
+          "dosage": "1.0 g/L water",
+          "application": "Spray on underside of leaves where nymphs feed",
+          "frequency": "Every 15 days, maximum 2 sprays",
+          "precautions": "Highly toxic to beneficial insects, use selectively",
+          "preharvest_interval": "18 days",
+          "effectiveness": "88-93%"
+        },
+        {
+          "type": "chemical",
+          "name": "Pyriproxyfen 10% EC",
+          "dosage": "1.0 ml/L water",
+          "application": "IGR (Insect Growth Regulator), disrupts nymph development",
+          "frequency": "Every 20 days",
+          "precautions": "Works on immature stages, combine with adult control",
+          "preharvest_interval": "15 days",
+          "effectiveness": "80-86%"
+        },
+        {
+          "type": "organic",
+          "name": "Neem Oil + Soap Solution",
+          "dosage": "5 ml neem oil + 2g soap/L water",
+          "application": "Spray underside of leaves thoroughly",
+          "frequency": "Every 5-7 days",
+          "precautions": "Safe for organic farming, spray during cooler hours",
+          "preharvest_interval": "1 day",
+          "effectiveness": "65-72%"
+        },
+        {
+          "type": "biological",
+          "name": "Encarsia formosa (Parasitic Wasp)",
+          "dosage": "Release 5-10 wasps per square meter",
+          "application": "Release when whitefly population is detected",
+          "frequency": "2-3 releases at 2-week intervals",
+          "precautions": "Avoid insecticides 30 days before and after release",
+          "preharvest_interval": "No restriction",
+          "effectiveness": "70-80% (long-term control)"
+        }
+      ],
+      "preventive_measures": [
+        "Install yellow sticky traps for monitoring and mass trapping",
+        "Use reflective mulches to repel whiteflies",
+        "Maintain proper irrigation to avoid water stress",
+        "Remove heavily infested leaves",
+        "Encourage natural enemies (ladybugs, lacewings, spiders)",
+        "Avoid over-fertilization with nitrogen",
+        "Use insect-proof nets in nurseries",
+        "Practice crop rotation"
+      ],
+      "monitoring": {
+        "inspection_frequency": "Twice weekly during hot dry periods",
+        "key_indicators": ["Yellow sticky trap catches", "Nymphs on leaf undersides", "Leaf yellowing"],
+        "threshold": "Spray when 5 adults per trap or 3-5 nymphs per leaf"
+      }
+    },
+    "Mealy Bug": {
+      "scientific_name": "Planococcus citri",
+      "type": "pest",
+      "description": "Small, soft-bodied insects covered with white waxy secretion. Major pest of custard apple causing leaf curl, stunted growth, and fruit drop.",
+      "symptoms": [
+        "White cottony masses on stems, leaves, and fruits",
+        "Honeydew secretion leading to sooty mold",
+        "Leaf curling and yellowing",
+        "Stunted plant growth",
+        "Premature fruit drop"
+      ],
+      "favorable_conditions": {
+        "temperature_range": [25, 35],
+        "humidity_range": [60, 90],
+        "rainfall": "moderate",
+        "season": ["Kharif", "Summer"]
+      },
+      "lifecycle": "30-40 days, multiple generations per year",
+      "economic_impact": "High - can cause 30-40% yield loss",
+      "treatments": [
+        {
+          "type": "chemical",
+          "name": "Imidacloprid 17.8% SL",
+          "dosage": "0.3 ml/L water",
+          "application": "Foliar spray on affected parts",
+          "frequency": "Every 15 days",
+          "precautions": "Avoid during flowering stage, wear protective equipment",
+          "preharvest_interval": "15 days",
+          "effectiveness": "85-90%"
+        },
+        {
+          "type": "chemical",
+          "name": "Thiamethoxam 25% WG",
+          "dosage": "0.4 g/L water",
+          "application": "Thorough spray covering entire plant",
+          "frequency": "Every 20 days",
+          "precautions": "Do not mix with alkaline chemicals",
+          "preharvest_interval": "20 days",
+          "effectiveness": "80-85%"
+        },
+        {
+          "type": "organic",
+          "name": "Neem Oil 1500 ppm",
+          "dosage": "5 ml/L water",
+          "application": "Spray thoroughly on all plant parts",
+          "frequency": "Weekly",
+          "precautions": "Safe for organic farming, spray in evening",
+          "preharvest_interval": "No restriction",
+          "effectiveness": "70-75%"
+        },
+        {
+          "type": "biological",
+          "name": "Cryptolaemus montrouzieri (Ladybird beetle)",
+          "dosage": "10 beetles per plant",
+          "application": "Release during early infestation",
+          "frequency": "2-3 releases at 15-day interval",
+          "precautions": "Avoid chemical sprays for 2 weeks after release",
+          "preharvest_interval": "No restriction",
+          "effectiveness": "60-70%"
+        }
+      ],
+      "preventive_measures": [
+        "Regular monitoring and early detection",
+        "Remove and destroy heavily infested plant parts",
+        "Maintain orchard sanitation",
+        "Avoid excessive nitrogen fertilization",
+        "Install yellow sticky traps",
+        "Encourage natural predators"
+      ],
+      "integrated_management": [
+        "Spray neem oil solution (5ml/L) at 15-day intervals",
+        "Release Cryptolaemus beetles @ 10/plant",
+        "Remove weeds and alternate hosts",
+        "Apply imidacloprid during severe infestation"
+      ]
+    },
+    "Athracnose": {
+      "scientific_name": "Colletotrichum gloeosporioides",
+      "type": "fungal_disease",
+      "description": "Major fungal disease affecting fruits, leaves, and flowers of custard apple. Causes significant post-harvest losses.",
+      "symptoms": [
+        "Circular brown spots on fruits",
+        "Sunken lesions with pinkish spore masses",
+        "Leaf spots with yellow halos",
+        "Flower blight and drop",
+        "Fruit rot during storage"
+      ],
+      "favorable_conditions": {
+        "temperature_range": [20, 30],
+        "humidity_range": [80, 100],
+        "rainfall": "high",
+        "season": ["Kharif", "Monsoon"]
+      },
+      "pathogen_lifecycle": "Survives on plant debris, spreads through rain splash and wind",
+      "economic_impact": "Very High - can cause 50-70% post-harvest loss",
+      "treatments": [
+        {
+          "type": "chemical",
+          "name": "Mancozeb 75% WP",
+          "dosage": "2.5 g/L water",
+          "application": "Foliar spray before symptom appearance",
+          "frequency": "Every 10-12 days during rainy season",
+          "precautions": "Wear mask and gloves, avoid spray drift",
+          "preharvest_interval": "15 days",
+          "effectiveness": "85-90%"
+        },
+        {
+          "type": "chemical",
+          "name": "Copper Oxychloride 50% WP",
+          "dosage": "3 g/L water",
+          "application": "Protective spray before rain",
+          "frequency": "Every 15 days",
+          "precautions": "May cause phytotoxicity on young leaves",
+          "preharvest_interval": "14 days",
+          "effectiveness": "80-85%"
+        },
+        {
+          "type": "chemical",
+          "name": "Carbendazim 50% WP",
+          "dosage": "1 g/L water",
+          "application": "Spray on fruits and foliage",
+          "frequency": "Every 15 days",
+          "precautions": "Rotate with other fungicides to avoid resistance",
+          "preharvest_interval": "10 days",
+          "effectiveness": "85-90%"
+        },
+        {
+          "type": "biological",
+          "name": "Trichoderma viride",
+          "dosage": "5 g/L water",
+          "application": "Foliar spray and soil application",
+          "frequency": "Every 20 days",
+          "precautions": "Store in cool place, use within expiry",
+          "preharvest_interval": "No restriction",
+          "effectiveness": "65-70%"
+        }
+      ],
+      "preventive_measures": [
+        "Remove and destroy infected fruits and leaves",
+        "Avoid overhead irrigation",
+        "Ensure proper drainage in orchard",
+        "Maintain adequate plant spacing (6m x 6m)",
+        "Apply fungicide before monsoon season",
+        "Practice crop sanitation"
+      ],
+      "integrated_management": [
+        "Spray Mancozeb before monsoon onset",
+        "Apply Trichoderma to soil and foliage",
+        "Remove infected plant debris regularly",
+        "Alternate with Carbendazim during disease pressure",
+        "Post-harvest treatment with hot water (52°C for 5 min)"
+      ]
+    },
+    "Diplodia Rot": {
+      "scientific_name": "Botryodiplodia theobromae",
+      "type": "fungal_disease",
+      "description": "Post-harvest fungal disease causing significant fruit rot during storage and transport.",
+      "symptoms": [
+        "Brown to black discoloration of fruit",
+        "Soft, watery rot starting from stem end",
+        "Foul odor from infected fruits",
+        "Black pycnidia on fruit surface",
+        "Complete fruit rot within 3-5 days"
+      ],
+      "favorable_conditions": {
+        "temperature_range": [25, 35],
+        "humidity_range": [70, 95],
+        "rainfall": "moderate",
+        "season": ["Summer", "Rabi"]
+      },
+      "pathogen_lifecycle": "Enters through wounds, stem ends, or natural openings",
+      "economic_impact": "High - 20-40% post-harvest loss",
+      "treatments": [
+        {
+          "type": "chemical",
+          "name": "Thiophanate Methyl 70% WP",
+          "dosage": "1 g/L water",
+          "application": "Spray on fruits 2 weeks before harvest",
+          "frequency": "Two sprays at 15-day interval",
+          "precautions": "Avoid mixing with copper-based fungicides",
+          "preharvest_interval": "7 days",
+          "effectiveness": "85-90%"
+        },
+        {
+          "type": "post_harvest",
+          "name": "Hot Water Treatment",
+          "dosage": "52°C for 5 minutes",
+          "application": "Dip fruits immediately after harvest",
+          "frequency": "Once after harvest",
+          "precautions": "Maintain exact temperature, cool fruits gradually",
+          "preharvest_interval": "N/A",
+          "effectiveness": "80-85%"
+        },
+        {
+          "type": "chemical",
+          "name": "Carbendazim 12% + Mancozeb 63% WP",
+          "dosage": "2 g/L water",
+          "application": "Pre-harvest fruit spray",
+          "frequency": "Two sprays at 15-day interval",
+          "precautions": "Use before fruit maturity",
+          "preharvest_interval": "10 days",
+          "effectiveness": "85-90%"
+        }
+      ],
+      "preventive_measures": [
+        "Avoid fruit injuries during harvesting",
+        "Use clean, sanitized harvesting tools",
+        "Store fruits in cool (8-10°C), dry conditions",
+        "Remove infected fruits immediately",
+        "Apply pre-harvest fungicides",
+        "Proper handling during transport"
+      ],
+      "integrated_management": [
+        "Pre-harvest spray with Thiophanate Methyl",
+        "Hot water treatment immediately after harvest",
+        "Store at optimal temperature (8-10°C)",
+        "Maintain 85-90% relative humidity during storage",
+        "Regular inspection and removal of infected fruits"
+      ]
+    },
+    "Leaf spot on fruit": {
+      "scientific_name": "Cercospora spp.",
+      "type": "fungal_disease",
+      "description": "Fungal disease causing spots on fruits and leaves, reducing fruit quality and marketability.",
+      "symptoms": [
+        "Small circular to irregular spots on fruits",
+        "Brown spots with darker margins",
+        "Spots may coalesce causing large lesions",
+        "Yellowing around infected areas",
+        "Premature fruit drop in severe cases"
+      ],
+      "favorable_conditions": {
+        "temperature_range": [22, 32],
+        "humidity_range": [70, 95],
+        "rainfall": "high",
+        "season": ["Kharif", "Monsoon"]
+      },
+      "pathogen_lifecycle": "Spreads through wind and rain splash, survives on plant debris",
+      "economic_impact": "Medium - 15-25% quality loss",
+      "treatments": [
+        {
+          "type": "chemical",
+          "name": "Carbendazim 50% WP",
+          "dosage": "1 g/L water",
+          "application": "Foliar spray covering fruits",
+          "frequency": "Every 14 days",
+          "precautions": "Rotate with other fungicide groups",
+          "preharvest_interval": "10 days",
+          "effectiveness": "80-85%"
+        },
+        {
+          "type": "chemical",
+          "name": "Propiconazole 25% EC",
+          "dosage": "1 ml/L water",
+          "application": "Spray during fruit development",
+          "frequency": "Every 15 days",
+          "precautions": "Avoid during hot weather",
+          "preharvest_interval": "15 days",
+          "effectiveness": "85-90%"
+        },
+        {
+          "type": "chemical",
+          "name": "Copper Hydroxide 77% WP",
+          "dosage": "2 g/L water",
+          "application": "Protective spray",
+          "frequency": "Every 20 days",
+          "precautions": "May stain fruits",
+          "preharvest_interval": "14 days",
+          "effectiveness": "75-80%"
+        }
+      ],
+      "preventive_measures": [
+        "Remove fallen leaves regularly",
+        "Improve air circulation through pruning",
+        "Balanced fertilization (avoid excess nitrogen)",
+        "Avoid water stress",
+        "Sanitation of orchard floor",
+        "Resistant varieties if available"
+      ],
+      "integrated_management": [
+        "Apply Carbendazim at fruit set stage",
+        "Maintain proper plant spacing",
+        "Remove and destroy infected leaves",
+        "Spray before monsoon season",
+        "Apply balanced nutrition (NPK based on soil test)"
+      ]
+    },
+    "Leaf spot on Leaves": {
+      "scientific_name": "Various fungal pathogens",
+      "type": "fungal_disease",
+      "description": "Foliar disease affecting leaf health and photosynthetic capacity of custard apple plants.",
+      "symptoms": [
+        "Circular to angular spots on leaves",
+        "Brown to grayish lesions",
+        "Yellow halo around spots",
+        "Premature leaf drop",
+        "Reduced photosynthesis"
+      ],
+      "favorable_conditions": {
+        "temperature_range": [20, 30],
+        "humidity_range": [75, 100],
+        "rainfall": "high",
+        "season": ["Kharif", "Monsoon"]
+      },
+      "pathogen_lifecycle": "Survives on fallen leaves, spreads through water splash",
+      "economic_impact": "Medium - indirect impact on fruit quality and yield",
+      "treatments": [
+        {
+          "type": "chemical",
+          "name": "Mancozeb 75% WP",
+          "dosage": "2.5 g/L water",
+          "application": "Foliar spray",
+          "frequency": "Every 12 days",
+          "precautions": "Complete coverage essential",
+          "preharvest_interval": "15 days",
+          "effectiveness": "80-85%"
+        },
+        {
+          "type": "chemical",
+          "name": "Tebuconazole 25.9% EC",
+          "dosage": "0.5 ml/L water",
+          "application": "Systemic foliar spray",
+          "frequency": "Every 20 days",
+          "precautions": "Use during early infection stage",
+          "preharvest_interval": "20 days",
+          "effectiveness": "85-90%"
+        },
+        {
+          "type": "organic",
+          "name": "Bordeaux Mixture (1%)",
+          "dosage": "10 g/L water",
+          "application": "Protective spray on foliage",
+          "frequency": "Every 15 days",
+          "precautions": "Prepare fresh solution, may cause phytotoxicity",
+          "preharvest_interval": "14 days",
+          "effectiveness": "70-75%"
+        }
+      ],
+      "preventive_measures": [
+        "Remove infected leaves promptly",
+        "Maintain orchard cleanliness",
+        "Avoid overhead irrigation",
+        "Ensure good air circulation",
+        "Apply preventive fungicides",
+        "Balanced nutrition management"
+      ],
+      "integrated_management": [
+        "Spray Mancozeb preventively before monsoon",
+        "Remove and burn infected leaves",
+        "Apply micronutrients to improve plant health",
+        "Use Tebuconazole during active infection",
+        "Maintain optimal plant vigor through proper nutrition"
+      ]
+    },
+    "Blank Canker": {
+      "scientific_name": "Phomopsis spp.",
+      "type": "fungal_disease",
+      "description": "Stem and branch canker disease causing dieback and reducing plant productivity.",
+      "symptoms": [
+        "Sunken lesions on stems and branches",
+        "Bark cracking and peeling",
+        "Gum exudation from affected areas",
+        "Branch dieback from tip backwards",
+        "Reduced fruit production"
+      ],
+      "favorable_conditions": {
+        "temperature_range": [20, 30],
+        "humidity_range": [70, 90],
+        "rainfall": "moderate to high",
+        "season": ["Kharif", "Rabi"]
+      },
+      "pathogen_lifecycle": "Enters through wounds, spreads through infected pruning tools",
+      "economic_impact": "High - long-term impact on plant health and productivity",
+      "treatments": [
+        {
+          "type": "chemical",
+          "name": "Copper Oxychloride 50% WP",
+          "dosage": "3 g/L water",
+          "application": "Spray on stems and branches",
+          "frequency": "Every 15 days",
+          "precautions": "Apply after pruning to prevent infection",
+          "preharvest_interval": "14 days",
+          "effectiveness": "75-80%"
+        },
+        {
+          "type": "paste",
+          "name": "Bordeaux Paste",
+          "dosage": "Thick paste application",
+          "application": "Apply on pruned surfaces and cankers",
+          "frequency": "After each pruning",
+          "precautions": "Remove diseased tissue before application",
+          "preharvest_interval": "N/A",
+          "effectiveness": "80-85%"
+        },
+        {
+          "type": "chemical",
+          "name": "Thiophanate Methyl 70% WP",
+          "dosage": "1.5 g/L water",
+          "application": "Spray on affected parts",
+          "frequency": "Every 20 days",
+          "precautions": "Prune infected branches before treatment",
+          "preharvest_interval": "7 days",
+          "effectiveness": "80-85%"
+        }
+      ],
+      "preventive_measures": [
+        "Use sanitized pruning tools",
+        "Prune during dry weather",
+        "Remove and burn infected branches",
+        "Apply protective paste after pruning",
+        "Avoid mechanical injuries to plants",
+        "Maintain plant vigor through proper nutrition"
+      ],
+      "integrated_management": [
+        "Prune infected branches 15-20 cm below symptoms",
+        "Apply Bordeaux paste on cut surfaces",
+        "Spray Copper Oxychloride preventively",
+        "Sanitize pruning tools with 10% bleach solution",
+        "Improve orchard drainage",
+        "Apply balanced fertilization"
+      ]
+    },
+    "Physical Damage (Fruit Rubbing)": {
+      "scientific_name": "Mechanical Injury",
+      "type": "physical_damage",
+      "description": "Black spots or abrasions caused by fruits rubbing against branches or other fruits due to wind or overcrowding. Often mistaken for disease.",
+      "symptoms": [
+        "Black or brown scuff marks on fruit surface",
+        "No fungal growth or oozing",
+        "Lesions are superficial and dry",
+        "Occurs on exposed side or contact points"
+      ],
+      "favorable_conditions": {
+        "temperature_range": [0, 50],
+        "humidity_range": [0, 100],
+        "rainfall": "High wind",
+        "season": ["All"],
+        "notes": "Caused by wind and overcrowding"
+      },
+      "lifecycle": "N/A",
+      "economic_impact": "Low - Cosmetic damage only, but reduces market value",
+      "treatments": [],
+      "preventive_measures": [
+        "Proper pruning to reduce overcrowding",
+        "Windbreaks to reduce wind speed",
+        "Fruit bagging",
+        "Spacing fruits during thinning"
+      ],
+      "monitoring": {
+        "inspection_frequency": "During fruit development",
+        "key_indicators": ["Rubbing marks", "Proximity to branches"],
+        "threshold": "N/A"
+      }
+    }
+  },
+  "fertilizer_schedule": {
+    "Phule Purandar": {
+      "June (Pre-Monsoon)": {
+        "FYM": "20-30 kg/tree",
+        "Nitrogen": "250g/tree",
+        "Phosphorus": "125g/tree",
+        "Potassium": "125g/tree",
+        "Micronutrients": "Apply Zinc Sulphate and Ferrous Sulphate if soil deficient"
+      },
+      "August (Flowering/Fruit Set)": {
+        "Nitrogen": "125g/tree",
+        "Potassium": "125g/tree",
+        "Foliar Spray": "00:52:34 (MKP) @ 5g/L for fruit development"
+      },
+      "October (Fruit Development)": {
+        "Potassium": "125g/tree",
+        "Calcium Nitrate": "Spray @ 3g/L to prevent fruit cracking",
+        "Boron": "Spray @ 1g/L for fruit quality"
+      }
+    }
+  },
+  "varieties": {
+    "Phule Purandar": {
+      "description": "A high-yielding variety of Custard Apple developed by MPKV, Rahuri. Known for less seeds and more pulp.",
+      "characteristics": {
+        "fruit_size": "Medium to Large",
+        "pulp_content": "High",
+        "seed_count": "Low",
+        "sugar_content": "High (Sweet)"
+      },
+      "susceptibility": {
+        "Mealy Bug": "Moderate",
+        "Anthracnose": "Low",
+        "Fruit Rubbing": "High (due to heavy fruiting)"
+      },
+      "specific_care": [
+        "Requires proper thinning to prevent fruit rubbing",
+        "Balanced nutrition for fruit size",
+        "Regular monitoring for Mealy Bugs",
+        "Windbreaks recommended to reduce rubbing damage"
+      ]
+    }
+  },
+  "general_recommendations": {
+    "monitoring": "Inspect plants weekly during growing season, twice weekly during monsoon",
+    "record_keeping": "Maintain records of pest/disease occurrences, weather conditions, and treatments applied",
+    "resistance_management": "Rotate fungicides with different modes of action to prevent resistance",
+    "organic_options": "Neem-based products, Trichoderma, and cultural practices for organic farming",
+    "safety": "Always wear protective equipment, follow label instructions, observe pre-harvest intervals"
+  }
+}

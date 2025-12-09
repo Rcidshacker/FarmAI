@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { createSpraySchedule } from '../services/api';
+import { createSpraySchedule, recordSpray } from '../services/api';
 import {
     Calendar,
     AlertTriangle,
@@ -16,23 +16,50 @@ import {
 } from 'lucide-react';
 import { cn } from "../lib/utils";
 import { LumaSpin } from '../components/ui/LumaSpin';
+import { useTranslation } from 'react-i18next';
+import { NeonButton } from '../components/ui/NeonButton';
 
 const SpraySchedule = () => {
+    const { t } = useTranslation();
     const [schedule, setSchedule] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [isSpraying, setIsSpraying] = useState(false);
+    const [spraySuccess, setSpraySuccess] = useState(false);
+
+    const handleSpray = async () => {
+        setIsSpraying(true);
+        try {
+            await recordSpray({
+                date: new Date().toISOString(),
+                name: "Manual Spray",
+                notes: "Triggered from Spray Schedule"
+            });
+            setSpraySuccess(true);
+            setTimeout(() => setSpraySuccess(false), 3000);
+        } catch (error) {
+            console.error("Spray failed", error);
+        } finally {
+            setIsSpraying(false);
+        }
+    };
+
+    const fetchSchedule = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            // Requesting 30 days ahead for Pune
+            const response = await createSpraySchedule("Pune", 30);
+            setSchedule(response.data);
+        } catch (e) {
+            console.error(e);
+            setError(e.message || "Failed to load schedule");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const fetchSchedule = async () => {
-            try {
-                // Requesting 30 days ahead for Pune
-                const response = await createSpraySchedule("Pune", 30);
-                setSchedule(response.data);
-            } catch (e) {
-                console.error(e);
-            } finally {
-                setLoading(false);
-            }
-        };
         fetchSchedule();
     }, []);
 
@@ -40,10 +67,27 @@ const SpraySchedule = () => {
         return (
             <div className="min-h-[60vh] flex flex-col items-center justify-center p-6 text-center">
                 <LumaSpin />
-                <h3 className="text-xl font-semibold text-gray-800 mt-6">Optimizing Spray Schedule</h3>
+                <h3 className="text-xl font-semibold text-gray-800 mt-6">{t('dashboard.optimizingSchedule')}</h3>
                 <p className="text-gray-500 mt-2 max-w-sm">
-                    Our AI is analyzing weather patterns, pest lifecycles, and crop stages for the next 30 days...
+                    {t('dashboard.analyzing')}
                 </p>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="min-h-[60vh] flex flex-col items-center justify-center p-6 text-center">
+                <div className="bg-red-50 p-4 rounded-full mb-4">
+                    <AlertTriangle className="h-8 w-8 text-red-500" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-800">Connection Error</h3>
+                <p className="text-gray-500 mt-2 max-w-sm mb-6">
+                    {error}. Please check your API settings in Profile.
+                </p>
+                <NeonButton onClick={fetchSchedule} neon={false} className="bg-indigo-600 text-white">
+                    Retry Connection
+                </NeonButton>
             </div>
         );
     }
@@ -58,36 +102,66 @@ const SpraySchedule = () => {
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                         <div>
                             <h1 className="text-3xl font-bold text-gray-900 tracking-tight mb-2">
-                                Smart Spray Schedule
+                                {t('dashboard.smartSpraySchedule')}
                             </h1>
                             <div className="flex items-center gap-2 text-gray-500 text-sm">
                                 <Calendar className="h-4 w-4" />
-                                <span>Next 30 Days Strategy</span>
+                                <span>{t('dashboard.next30Days')}</span>
                                 <span className="w-1 h-1 rounded-full bg-gray-300"></span>
                                 <span className="text-green-600 font-medium">Pune Region</span>
                             </div>
                         </div>
 
-                        {/* Summary Cards */}
-                        <div className="flex gap-4">
-                            <div className="bg-green-50 rounded-2xl p-4 flex-1 md:min-w-[160px] border border-green-100">
-                                <div className="flex items-center gap-2 text-green-700 mb-1">
-                                    <DollarSign className="h-4 w-4" />
-                                    <span className="text-xs font-bold uppercase tracking-wider">Est. Cost</span>
+                        {/* Summary Cards & Action */}
+                        <div className="flex flex-col md:flex-row gap-4 items-stretch">
+                            <div className="flex gap-4">
+                                <div className="bg-green-50 rounded-2xl p-4 flex-1 md:min-w-[160px] border border-green-100">
+                                    <div className="flex items-center gap-2 text-green-700 mb-1">
+                                        <DollarSign className="h-4 w-4" />
+                                        <span className="text-xs font-bold uppercase tracking-wider">{t('dashboard.estCost')}</span>
+                                    </div>
+                                    <div className="text-2xl font-bold text-gray-900">
+                                        ₹{schedule.summary.total_cost}
+                                    </div>
                                 </div>
-                                <div className="text-2xl font-bold text-gray-900">
-                                    ₹{schedule.summary.total_cost}
+                                <div className="bg-blue-50 rounded-2xl p-4 flex-1 md:min-w-[160px] border border-blue-100">
+                                    <div className="flex items-center gap-2 text-blue-700 mb-1">
+                                        <TrendingUp className="h-4 w-4" />
+                                        <span className="text-xs font-bold uppercase tracking-wider">{t('dashboard.yieldSaved')}</span>
+                                    </div>
+                                    <div className="text-2xl font-bold text-gray-900">
+                                        ₹{10000 - schedule.summary.estimated_yield_loss}
+                                    </div>
                                 </div>
                             </div>
-                            <div className="bg-blue-50 rounded-2xl p-4 flex-1 md:min-w-[160px] border border-blue-100">
-                                <div className="flex items-center gap-2 text-blue-700 mb-1">
-                                    <TrendingUp className="h-4 w-4" />
-                                    <span className="text-xs font-bold uppercase tracking-wider">Yield Saved</span>
-                                </div>
-                                <div className="text-2xl font-bold text-gray-900">
-                                    ₹{10000 - schedule.summary.estimated_yield_loss}
-                                </div>
-                            </div>
+
+                            {/* Spray Button */}
+                            <NeonButton
+                                onClick={handleSpray}
+                                disabled={isSpraying || spraySuccess}
+                                className={cn(
+                                    "h-auto min-h-[80px] md:w-[140px] rounded-2xl flex flex-col items-center justify-center gap-2 transition-all",
+                                    spraySuccess ? "bg-green-500 border-green-600" : "bg-gradient-to-br from-indigo-500 to-purple-600 border-indigo-400"
+                                )}
+                                neon={!spraySuccess}
+                            >
+                                {isSpraying ? (
+                                    <>
+                                        <Loader2 className="h-6 w-6 animate-spin text-white" />
+                                        <span className="text-white text-xs font-bold">Spraying...</span>
+                                    </>
+                                ) : spraySuccess ? (
+                                    <>
+                                        <CheckCircle2 className="h-8 w-8 text-white" />
+                                        <span className="text-white text-xs font-bold">Done!</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <SprayCan className="h-6 w-6 text-white" />
+                                        <span className="text-white text-xs font-bold">Spray Now</span>
+                                    </>
+                                )}
+                            </NeonButton>
                         </div>
                     </div>
                 </div>
@@ -106,7 +180,7 @@ const SpraySchedule = () => {
                                 <div className="bg-amber-100 p-2 rounded-xl">
                                     <AlertCircle className="h-6 w-6 text-amber-600" />
                                 </div>
-                                <h3 className="text-lg font-semibold text-amber-900">Active Advisories</h3>
+                                <h3 className="text-lg font-semibold text-amber-900">{t('dashboard.activeAdvisories')}</h3>
                             </div>
                             <div className="space-y-3">
                                 {schedule.alerts.map((alert, idx) => (
@@ -124,7 +198,7 @@ const SpraySchedule = () => {
                 <div>
                     <div className="flex items-center gap-3 mb-6">
                         <Leaf className="h-5 w-5 text-green-600" />
-                        <h2 className="text-lg font-bold text-gray-900">Recommended Timeline</h2>
+                        <h2 className="text-lg font-bold text-gray-900">{t('dashboard.recommendedTimeline')}</h2>
                     </div>
 
                     <div className="relative space-y-8 md:space-y-6 before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-gray-200 before:via-gray-200 before:to-transparent">
@@ -166,11 +240,24 @@ const SpraySchedule = () => {
                                         <div className="mb-4">
                                             <h4 className="flex items-center gap-2 text-green-700 font-bold text-lg mb-1">
                                                 <SprayCan className="h-5 w-5" />
-                                                {event.recommendation.split(':')[0]}
+                                                {event.chemical_name || "Scheduled Spray"}
                                             </h4>
-                                            <p className="text-gray-600 text-sm leading-relaxed">
-                                                {event.recommendation.split(':')[1] || event.recommendation}
-                                            </p>
+                                            <div className="space-y-1.5">
+                                                <p className="text-gray-700 text-sm font-medium flex items-center gap-2">
+                                                    <span className="bg-green-100 text-green-800 text-[10px] px-1.5 py-0.5 rounded uppercase tracking-wider font-bold">Dosage</span>
+                                                    {event.dosage}
+                                                </p>
+                                                {event.active_ingredient && (
+                                                    <p className="text-gray-500 text-xs">
+                                                        <span className="font-semibold">Active:</span> {event.active_ingredient}
+                                                    </p>
+                                                )}
+                                                {event.reasoning && (
+                                                    <p className="text-gray-500 text-xs italic mt-2 border-l-2 border-gray-200 pl-2">
+                                                        "{event.reasoning}"
+                                                    </p>
+                                                )}
+                                            </div>
                                         </div>
 
                                         {/* Weather Context */}

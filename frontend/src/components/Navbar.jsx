@@ -1,16 +1,17 @@
 import React from 'react';
 import { Home, Activity, Calendar, HelpCircle, User, Camera } from 'lucide-react';
 import { TubelightNavbar } from './ui/TubelightNavbar';
-
 import { BottomNavbar } from './BottomNavbar';
+import { useTranslation } from 'react-i18next';
 
 export function Navbar() {
+    const { t } = useTranslation();
     const navItems = [
-        { name: "Pest Risk", icon: Activity, url: "/pest-risk" },
-        { name: "Schedule", icon: Calendar, url: "/spray-schedule" },
-        { name: "Camera", icon: Camera, url: "/" },
-        { name: "Assistant", icon: HelpCircle, url: "/assistant" },
-        { name: "Profile", icon: User, url: "/profile" },
+        { name: t('nav.pestRisk'), icon: Activity, url: "/pest-risk" },
+        { name: t('nav.schedule'), icon: Calendar, url: "/spray-schedule" },
+        { name: t('nav.camera'), icon: Camera, url: "/" },
+        { name: t('nav.assistant'), icon: HelpCircle, url: "/assistant" },
+        { name: t('nav.profile'), icon: User, url: "/profile" },
     ];
 
     return (

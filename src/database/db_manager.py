@@ -199,6 +199,24 @@ class DatabaseManager:
         except Exception as e:
             logger.error(f"Error getting records: {e}")
             return []
+
+    def delete_records(self, user_id: str = 'default_user', type: str = None):
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            if type:
+                cursor.execute('DELETE FROM spray_records WHERE user_id = ? AND type = ?', (user_id, type))
+            else:
+                cursor.execute('DELETE FROM spray_records WHERE user_id = ?', (user_id,))
+            
+            conn.commit()
+            conn.close()
+            return True
+        except Exception as e:
+            logger.error(f"Error deleting records: {e}")
+            return False
+            return []
     def _hash_password(self, password: str, salt: bytes = None) -> tuple[str, str]:
         """Hash a password using PBKDF2"""
         import hashlib

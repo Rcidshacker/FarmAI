@@ -5,8 +5,10 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { LumaSpin } from '../components/ui/LumaSpin';
 import { NeonButton } from '../components/ui/NeonButton';
 import Spline from '@splinetool/react-spline';
+import { useTranslation } from 'react-i18next';
 
 const PestRisk = () => {
+    const { t } = useTranslation();
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState(null);
     const [cropStage, setCropStage] = useState("Fruiting (Fruit Set)");
@@ -306,23 +308,23 @@ const PestRisk = () => {
                             <div className="flex flex-col md:flex-row items-center justify-center gap-8 z-10 relative">
                                 <GaugeChart value={data.pest_predictions['Mealy Bug']} />
                                 <div className="text-left space-y-2 text-sm max-w-xs">
-                                    <h4 className="font-semibold text-gray-700 border-b pb-1">Risk Breakdown</h4>
+                                    <h4 className="font-semibold text-gray-700 border-b pb-1">{t('pestRisk.riskBreakdown')}</h4>
                                     <div className="flex justify-between">
-                                        <span className="text-gray-500">AI Raw Score:</span>
+                                        <span className="text-gray-500">{t('pestRisk.aiRawScore')}:</span>
                                         <span className="font-medium">{(data.pest_predictions['Mealy Bug_details'].ai_score).toFixed(1)}%</span>
                                     </div>
                                     <div className="flex justify-between">
-                                        <span className="text-gray-500">Soil Multiplier:</span>
+                                        <span className="text-gray-500">{t('pestRisk.soilMultiplier')}:</span>
                                         <span className="font-medium">x{data.pest_predictions['Mealy Bug_details'].soil_multiplier.toFixed(2)}</span>
                                     </div>
                                     <div className="flex justify-between">
-                                        <span className="text-gray-500">EnKF Correction:</span>
+                                        <span className="text-gray-500">{t('pestRisk.enkfCorrection')}:</span>
                                         <span className="font-medium text-blue-600">
                                             {(data.pest_predictions['Mealy Bug_details'].enkf_fused_score).toFixed(1)}%
                                         </span>
                                     </div>
                                     <div className="flex justify-between border-t pt-1 mt-1">
-                                        <span className="text-gray-800 font-semibold">Final Stage Adjusted:</span>
+                                        <span className="text-gray-800 font-semibold">{t('pestRisk.finalStageAdjusted')}:</span>
                                         <span className="font-bold" style={{ color: getRiskColor(data.pest_predictions['Mealy Bug']) }}>
                                             {data.pest_predictions['Mealy Bug'].toFixed(1)}%
                                         </span>
@@ -334,33 +336,33 @@ const PestRisk = () => {
                         {/* Forecast Cards (Farmer-First Redesign - Vertical on Mobile) */}
                         {data.forecast && data.forecast.dates.length > 0 && (
                             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                                <h3 className="font-bold text-gray-800 mb-4">7-Day Action Plan</h3>
+                                <h3 className="font-bold text-gray-800 mb-4">{t('dashboard.actionPlan')}</h3>
                                 <div className="flex flex-col md:grid md:grid-cols-4 lg:grid-cols-7 gap-3">
                                     {data.forecast.dates.map((date, i) => {
                                         const risk = data.forecast.risks[i];
                                         let status, Icon, colorClass, bgColorClass, actionText, tip;
 
                                         if (risk < 30) {
-                                            status = "Safe";
+                                            status = t('pestRisk.safe');
                                             Icon = Shield;
                                             colorClass = "text-green-600";
                                             bgColorClass = "bg-green-50 border-green-200";
-                                            actionText = "Relax";
-                                            tip = "Conditions are good. No spray needed.";
+                                            actionText = t('pestRisk.relax');
+                                            tip = t('pestRisk.tipSafe');
                                         } else if (risk < 70) {
-                                            status = "Warning";
+                                            status = t('pestRisk.warning');
                                             Icon = Eye;
                                             colorClass = "text-yellow-600";
                                             bgColorClass = "bg-yellow-50 border-yellow-200";
-                                            actionText = "Scout";
-                                            tip = "Moderate risk. Go check the orchard for early signs.";
+                                            actionText = t('pestRisk.scout');
+                                            tip = t('pestRisk.tipWarning');
                                         } else {
-                                            status = "Danger";
+                                            status = t('pestRisk.danger');
                                             Icon = Bug;
                                             colorClass = "text-red-600";
                                             bgColorClass = "bg-red-50 border-red-200";
-                                            actionText = "Alert";
-                                            tip = "🔴 High Alert: Humid weather ahead. Mealybugs will multiply fast. Spray recommended.";
+                                            actionText = t('pestRisk.alert');
+                                            tip = t('pestRisk.tipDanger');
                                         }
 
                                         return (

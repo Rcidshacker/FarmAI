@@ -236,6 +236,12 @@ class PestRiskRequest(BaseModel):
     manual_rvi: float = 0.65 # Legacy: kept for compatibility, overridden by Twin Brain
     api_key: Optional[str] = None
 
+class SprayEventRequest(BaseModel):
+    user_id: str = "default_user"
+    date: str  # ISO format
+    name: str = "Generic Spray"
+    notes: Optional[str] = None
+
 class OTPRequest(BaseModel):
     phone: str
 
@@ -401,6 +407,30 @@ def get_automated_vegetation(lat, lon, api_key, current_stage):
     fallback_val = STAGE_TO_DENSITY_MAP.get(current_stage, 0.5)
     return fallback_val, f"🧠 Estimated from '{current_stage}' Stage", "blue"
 
+@app.post("/record-spray")
+async def record_spray(request: SprayEventRequest):
+    db = get_db_manager()
+    success = db.add_record({
+        "user_id": request.user_id,
+        "date": request.date,
+        "type": "spray",
+        "name": request.name,
+        "notes": request.notes,
+        "quantity": 0, # Default
+        "unit": "L"
+    })
+    if success:
+        return {"status": "success", "message": "Spray recorded"}
+    raise HTTPException(status_code=500, detail="Failed to record spray")
+
+@app.delete("/reset-spray-history")
+async def reset_spray_history(user_id: str = "default_user"):
+    db = get_db_manager()
+    success = db.delete_records(user_id, type="spray")
+    if success:
+        return {"status": "success", "message": "Spray history reset"}
+    raise HTTPException(status_code=500, detail="Failed to reset history")
+
 @app.post("/predict-pest-risk")
 async def predict_pest_risk(request: PestRiskRequest):
     """
@@ -443,6 +473,19 @@ async def predict_pest_risk(request: PestRiskRequest):
             location="Pune", days=7, lat=hardcoded_lat, lon=hardcoded_lon
         )
 
+        # --- 3.5 FETCH SPRAY HISTORY ---
+        db = get_db_manager()
+        records = db.get_records(user_id="default_user")
+        last_spray_date = None
+        if records:
+            sprays = [r for r in records if r['type'] == 'spray']
+            if sprays:
+                sprays.sort(key=lambda x: x['date'], reverse=True)
+                try:
+                    last_spray_date = datetime.fromisoformat(sprays[0]['date'])
+                except ValueError:
+                    pass
+
         # --- 4. RISK CALCULATION PIPELINE ---
         # Constants from snippet
         stage_multipliers = {
@@ -453,6 +496,10 @@ async def predict_pest_risk(request: PestRiskRequest):
             "Harvesting": 1.0
         }
         stage_mod = stage_multipliers.get(crop_stage, 1.0)
+
+        # Normalize timezones for last_spray_date ONCE here
+        if last_spray_date and last_spray_date.tzinfo is not None:
+            last_spray_date = last_spray_date.replace(tzinfo=None)
 
         # Helper to calculate single day risk
         def calculate_pipeline_risk(row_data):
@@ -506,21 +553,73 @@ async def predict_pest_risk(request: PestRiskRequest):
             
             biological_risk = raw_risk * soil_multiplier
             
-            # C) INTERVENTION CHECK (Simulated / Placeholder as per snippet)
-            # In a real app, check DB. Here we assume False unless specified.
-            is_protected = False 
+            # C) INTERVENTION CHECK (Smart Risk Decay)
+            is_protected = False
+            protection_factor = 1.0
+            
+            if last_spray_date:
+                # Determine target date for this calculation
+                target_date = row_data.get('datetime')
+                if isinstance(target_date, str):
+                    try:
+                        target_date = datetime.fromisoformat(target_date)
+                    except:
+                        target_date = datetime.now()
+                elif not target_date:
+                    target_date = datetime.now()
+                
+                # Ensure target_date is datetime
+                if isinstance(target_date, pd.Timestamp):
+                    target_date = target_date.to_pydatetime()
+
+                # Normalize target_date timezone
+                if target_date.tzinfo is not None:
+                    target_date = target_date.replace(tzinfo=None)
+
+                # If target date is after spray date
+                if target_date >= last_spray_date:
+                    days_since_spray = (target_date - last_spray_date).days
+                    
+                    # Base effective duration (e.g., 14 days)
+                    effective_duration = 14.0
+                    
+                    # Factors
+                    # 1. Rain
+                    if row_data.get('rainfall', 0) > 5.0 or row_data.get('precip', 0) > 5.0: # Heavy rain threshold
+                        effective_duration -= 3.0
+                    
+                    # 2. Temperature
+                    if row_data.get('tempmax', 25) > 35.0 or row_data.get('temp', 25) > 35.0:
+                        days_since_spray *= 1.5 # Degrades faster
+                        
+                    # 3. Crop Stage
+                    if crop_stage == "Fruiting (Fruit Set)":
+                        effective_duration -= 2.0 # Conservative
+                        
+                    effective_duration = max(1.0, effective_duration)
+                    
+                    if days_since_spray < effective_duration:
+                        is_protected = True
+                        # Linear decay of protection
+                        # Day 0: 90% reduction (factor 0.1)
+                        # Day 14: 0% reduction (factor 1.0)
+                        
+                        decay_progress = days_since_spray / effective_duration
+                        protection_factor = 0.1 + (0.9 * decay_progress)
+                        protection_factor = min(1.0, protection_factor)
             
             # D) HUMAN CORRECTION (EnKF) & STAGE VETO
+            fused = run_enkf_correction(biological_risk, final_rvi)
+            
             if is_protected:
-                final_pipeline_risk = 0.1
-            else:
-                fused = run_enkf_correction(biological_risk, final_rvi)
-                final_pipeline_risk = fused * stage_mod
+                fused *= protection_factor
+
+            final_pipeline_risk = fused * stage_mod
                 
             return {
                 "raw_ai": raw_risk,
                 "soil_mod": soil_multiplier,
-                "fused_enkf": fused if not is_protected else 0.1,
+                "fused_enkf": fused,
                 "final": min(1.0, max(0.0, final_pipeline_risk))
             }
 
@@ -1163,15 +1262,24 @@ async def get_satellite_data(lat: float, lon: float):
 async def chat_assistant(request: ChatRequest):
     """AI Assistant Chat"""
     try:
+        logger.info(f"Assistant query received: {request.query}")
         assistant = get_ai_assistant()
         response = assistant.get_response(request.query, request.context)
+        logger.info(f"Assistant response: {response}")
         return {
             "success": True,
             "response": response
         }
     except Exception as e:
-        logger.error(f"Assistant error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Assistant error: {e}", exc_info=True)
+        # Return a default helpful response instead of error
+        return {
+            "success": False,
+            "response": {
+                "text": "I'm having trouble accessing my knowledge base. Please try asking about specific pests (like 'Mealy Bug'), chemicals (like 'Imidacloprid'), or weather.",
+                "related_topics": ["Pests", "Chemicals", "Weather"]
+            }
+        }
 
 @app.post("/feedback/detailed")
 async def submit_detailed_feedback(feedback: DetailedFeedback):

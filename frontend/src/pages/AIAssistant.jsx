@@ -1,14 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { chatAssistant } from '../services/api';
 import { Bot } from 'lucide-react';
 // import { NeonButton } from '../components/ui/NeonButton'; // Removed as it is replaced by ChatGPTInput
 import ChatGPTInput from '../components/ui/ChatGPTInput';
+import { useTranslation } from 'react-i18next';
 
 const AIAssistant = () => {
+    const { t } = useTranslation();
     const [query, setQuery] = useState("");
     const [messages, setMessages] = useState([
-        { type: 'bot', text: 'Namaste! I am your Farm Assistant. Ask me about pests, fertilizers, or current weather conditions.' }
+        { type: 'bot', text: t('assistant.welcome') }
     ]);
+    
+    // Update welcome message when language changes
+    useEffect(() => {
+        setMessages(prev => {
+            if (prev.length === 1 && prev[0].type === 'bot') {
+                return [{ type: 'bot', text: t('assistant.welcome') }];
+            }
+            return prev;
+        });
+    }, [t]);
+
     const [loading, setLoading] = useState(false);
 
     const handleSend = async (text) => {
@@ -26,9 +39,19 @@ const AIAssistant = () => {
 
         try {
             const res = await chatAssistant(textToSend);
-            setMessages([...newMessages, { type: 'bot', text: res.data.response.text }]);
+            // Handle both response.data.response and direct response.response structures
+            const responseText = res.data?.response?.text || res.data?.text || "Unable to get response";
+            setMessages([...newMessages, { type: 'bot', text: responseText }]);
         } catch (error) {
-            setMessages([...newMessages, { type: 'bot', text: "Sorry, I encountered an error checking the knowledge base." }]);
+            console.error("Assistant error:", error);
+            // Provide specific error message
+            let errorMsg = t('assistant.errorGeneric');
+            if (error.response?.status === 500) {
+                errorMsg = t('assistant.errorServer');
+            } else if (!navigator.onLine) {
+                errorMsg = t('assistant.errorOffline');
+            }
+            setMessages([...newMessages, { type: 'bot', text: errorMsg }]);
         } finally {
             setLoading(false);
         }
