@@ -1,0 +1,37 @@
+# Ignore virtual environments
+backy/
+venv/
+env/
+.env
+
+# Ignore python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore node modules and builds
+node_modules/
+dist/
+build/
+frontend/node_modules/
+frontend/dist/
+
+# Ignore logs and data
+logs/
+training_results/
+*.log
+data/farm_data.db
+
+# IDE settings
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Large Model Files (>100MB)
+models/disease_model_fold1.pth
+models/disease_model_fold2.pth
+# Optionally ignore all pth if preferred, but these are the blockers.

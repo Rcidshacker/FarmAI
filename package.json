@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "@headlessui/react": "^2.2.9",
+    "@heroicons/react": "^2.2.0",
+    "axios": "^1.13.2",
+    "lucide-react": "^0.556.0",
+    "react-router-dom": "^7.10.1",
+    "recharts": "^3.5.1"
+  }
+}

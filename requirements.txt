@@ -1,0 +1,64 @@
+# ==========================================
+# 1. YOUR ORIGINAL DEPENDENCIES (Streamlit & Forecasting)
+# ==========================================
+# Web UI
+streamlit==1.51.0
+streamlit-folium==0.25.3
+folium==0.20.0
+altair==5.5.0
+branca==0.8.2
+pydeck==0.9.1
+rich==13.7.0
+watchdog==6.0.0
+
+# Core Utilities
+blinker==1.9.0
+cachetools==6.2.2
+click==8.3.1
+gitdb==4.0.12
+GitPython==3.1.45
+Jinja2==3.1.6
+MarkupSafe==3.0.3
+protobuf==6.33.1
+pyarrow==21.0.0
+smmap==5.0.2
+tenacity==9.1.2
+toml==0.10.2
+tornado==6.5.2
+
+# Data Science & Math
+numpy==2.3.5
+pandas==2.3.3
+scipy==1.16.3
+python-dateutil==2.9.0.post0
+pytz==2025.2
+tzdata==2025.2
+narwhals==2.12.0
+
+# Your Forecasting Models
+scikit-learn==1.7.2
+xgboost==3.1.2
+optuna==4.6.0
+joblib==1.4.2
+
+# ==========================================
+# 2. NEW DEPENDENCIES (For Friend's Architecture)
+# ==========================================
+# API Framework
+fastapi>=0.100.0
+uvicorn[standard]>=0.20.0
+python-multipart          # Required for Image Uploads in FastAPI
+requests                  # For External Data Fetcher (IMD/Weather APIs)
+
+# Deep Learning (PyTorch) for Disease Detection
+# Note: If you have a GPU, install the CUDA version manually first!
+torch>=2.0.0
+torchvision>=0.15.0
+
+# Advanced Image Processing
+opencv-python             # (cv2) For image loading/resizing in processor
+albumentations            # For image augmentation pipelines
+pillow>=10.0.0            # (PIL) already in your list, but ensuring update
+
+# Web Scraping (for Research Paper Fetcher)
+beautifulsoup4
