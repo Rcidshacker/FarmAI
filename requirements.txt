@@ -60,9 +60,5 @@ opencv-python             # (cv2) For image loading/resizing in processor
 albumentations            # For image augmentation pipelines
 pillow>=10.0.0            # (PIL) already in your list, but ensuring update
 
-# Visualization & Analysis
-matplotlib>=3.7.0         # For plots and visualizations
-seaborn>=0.12.0          # For advanced statistical plots
-
 # Web Scraping (for Research Paper Fetcher)
 beautifulsoup4

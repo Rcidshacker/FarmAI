@@ -10,7 +10,7 @@ export default function AuthPage() {
     const handleSuccess = (user) => {
         // In a real app, you'd save the auth token here
         console.log('Logged in:', user);
-        navigate('/');
+        navigate('/pest-risk');
     };
 
     return (

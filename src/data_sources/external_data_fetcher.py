@@ -14,195 +14,238 @@ import time
 from bs4 import BeautifulSoup
 import logging
 import numpy as np
+import os
 
 logger = logging.getLogger(__name__)
 
 
 class IMDWeatherFetcher:
-    """Fetch real-time and forecast weather data from IMD"""
+    """Fetch real-time and forecast weather data from IMD with Smart Caching & Seasonal Fallback"""
     
     def __init__(self):
         self.base_url = "https://api.data.gov.in/resource"
-        # ---------------------------------------------------------
-        # FIX: Use Visual Crossing Key
-        # ---------------------------------------------------------
-        self.api_key = "YOUR_DATA_GOV_IN_API_KEY"  # Keep for IMD fallback
-        self.vc_key = "ENPYVRQT5SRYBZFGW68BCB4CP"  # Your Visual Crossing Key
+        self.api_key = "YOUR_DATA_GOV_IN_API_KEY"
+        self.vc_key = "ENPYVRQT5SRYBZFGW68BCB4CP"
+        self.cache_file = "data/weather_cache.json"
         
     def get_current_weather(self, location: str, state: str = "Maharashtra", lat: Optional[float] = None, lon: Optional[float] = None) -> Dict:
-        """
-        Get current weather for a location or coordinates
-        
-        Args:
-            location: City/District name
-            state: State name
-            lat: Latitude (optional)
-            lon: Longitude (optional)
-            
-        Returns:
-            Dict with temperature, humidity, rainfall, wind speed
-        """
-        try:
-            # If coordinates are provided, use OpenWeatherMap (more accurate for specific farm location)
-            if lat is not None and lon is not None:
-                return self._get_weather_by_coords(lat, lon)
+        """Get current weather with fallback to cache or seasonal mock"""
+        import os
+        # Check explicit offline mode
+        if os.getenv("OFFLINE_MODE", "False").lower() == "true":
+             logger.info(f"Offline Mode: Using fallback weather for {location}")
+             return self._get_fallback_weather(location)
 
-            # IMD API endpoint
+        try:
+            data = None
+            # 1. Try Online Sources
+            if lat is not None and lon is not None:
+                data = self._get_weather_by_coords(lat, lon)
+            else:
+                data = self._get_weather_by_imd(location, state)
+            
+            # 2. If Successful, Cache It
+            if data:
+                self._save_to_cache(location, data)
+                return data
+            
+            # 3. If Online Returns None/Empty, Fail over
+            raise Exception("No data returned from APIs")
+
+        except Exception as e:
+            logger.error(f"Error fetching online weather: {e}")
+            return self._get_fallback_weather(location)
+
+    def _get_weather_by_imd(self, location: str, state: str) -> Optional[Dict]:
+        """Fetch from IMD"""
+        try:
             endpoint = f"{self.base_url}/9ef84268-d588-465a-a308-a864a43d0070"
-            
             params = {
-                'api-key': self.api_key,
-                'format': 'json',
-                'filters[state]': state,
-                'filters[district]': location,
-                'limit': 1
+                'api-key': self.api_key, 'format': 'json',
+                'filters[state]': state, 'filters[district]': location, 'limit': 1
             }
-            
-            response = requests.get(endpoint, params=params, timeout=10)
+            response = requests.get(endpoint, params=params, timeout=5)
             response.raise_for_status()
-            
             data = response.json()
             
             if 'records' in data and len(data['records']) > 0:
                 record = data['records'][0]
                 return {
-                    'location': location,
-                    'state': state,
+                    'location': location, 'state': state,
                     'temperature': float(record.get('temperature', 0)),
                     'humidity': float(record.get('humidity', 0)),
                     'rainfall': float(record.get('rainfall', 0)),
                     'wind_speed': float(record.get('wind_speed', 0)),
-                    'datetime': record.get('last_updated', datetime.now().isoformat())
+                    'datetime': datetime.now().isoformat(),
+                    'source': 'IMD API'
                 }
-            else:
-                logger.warning(f"No weather data found for {location}, {state}")
-                return self._get_fallback_weather(location)
-                
-        except Exception as e:
-            logger.error(f"Error fetching IMD weather: {e}")
-            return self._get_fallback_weather(location)
+            return None
+        except:
+            return None
 
     def _get_weather_by_coords(self, lat: float, lon: float) -> Dict:
-        """Helper to get weather by coordinates using Visual Crossing"""
+        """Fetch from Visual Crossing"""
+        url = f"https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/{lat},{lon}?unitGroup=metric&key={self.vc_key}&include=current"
+        response = requests.get(url, timeout=5)
+        response.raise_for_status()
+        data = response.json()
+        current = data.get('currentConditions', {})
+        return {
+            'location': f"Lat: {lat}, Lon: {lon}",
+            'state': 'Unknown',
+            'temperature': current.get('temp', 0),
+            'humidity': current.get('humidity', 0),
+            'rainfall': current.get('precip', 0),
+            'wind_speed': current.get('windspeed', 0),
+            'datetime': datetime.now().isoformat(),
+            'source': 'Visual Crossing API'
+        }
+    
+    def get_forecast(self, location: str, days: int = 14, lat: Optional[float] = None, lon: Optional[float] = None) -> pd.DataFrame:
+        """Get forecast with fallback"""
+        import os
+        if os.getenv("OFFLINE_MODE", "False").lower() == "true":
+             return self._generate_seasonal_mock_forecast(days)
+
         try:
-            # Visual Crossing Timeline API (Current Weather)
-            url = f"https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/{lat},{lon}?unitGroup=metric&key={self.vc_key}&include=current"
+            loc_query = f"{lat},{lon}" if (lat and lon) else location
+            url = f"https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/{loc_query}?unitGroup=metric&key={self.vc_key}&include=days"
             
             response = requests.get(url, timeout=10)
             response.raise_for_status()
             data = response.json()
             
-            # Parse Current Conditions
-            current = data.get('currentConditions', {})
-            
-            return {
-                'location': f"Lat: {lat}, Lon: {lon}",
-                'state': 'Unknown',
-                'temperature': float(current.get('temp', 25)),
-                'humidity': float(current.get('humidity', 60)),
-                'rainfall': float(current.get('precip', 0)),  # VC returns 0 if no rain
-                'wind_speed': float(current.get('windspeed', 5)),
-                'datetime': datetime.now().isoformat()
-            }
-        except Exception as e:
-            logger.warning(f"Error fetching Visual Crossing weather: {e}")
-            return self._get_fallback_weather("Unknown")
-    
-    def get_forecast(self, location: str, days: int = 14, lat: Optional[float] = None, lon: Optional[float] = None) -> pd.DataFrame:
-        """
-        Get weather forecast using Visual Crossing
-        """
-        try:
-            # Determine location string (Lat,Lon is more precise)
-            loc_query = f"{lat},{lon}" if (lat and lon) else location
-            
-            # Visual Crossing Timeline API (Forecast)
-            url = f"https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/{loc_query}?unitGroup=metric&key={self.vc_key}&include=days"
-            
-            response = requests.get(url, timeout=15)
-            response.raise_for_status()
-            data = response.json()
-            
             forecasts = []
-            # VC returns daily data directly - No aggregation needed!
             for day_data in data.get('days', [])[:days]:
                 forecasts.append({
                     'datetime': pd.to_datetime(day_data['datetime']),
-                    'temp': float(day_data.get('temp', 25)),          # Daily Mean
-                    'tempmax': float(day_data.get('tempmax', 28)),    # Daily Max
-                    'tempmin': float(day_data.get('tempmin', 20)),    # Daily Min
-                    'humidity': float(day_data.get('humidity', 60)),
-                    'precip': float(day_data.get('precip', 0.0)),
-                    'windspeed': float(day_data.get('windspeed', 5.0)),
-                    'cloudcover': float(day_data.get('cloudcover', 0.0)),
-                    'solarradiation': float(day_data.get('solarradiation', 0.0)),
-                    'uvindex': float(day_data.get('uvindex', 0.0))
+                    'temp': day_data.get('temp'),
+                    'tempmax': day_data.get('tempmax'),
+                    'tempmin': day_data.get('tempmin'),
+                    'humidity': day_data.get('humidity'),
+                    'precip': day_data.get('precip', 0.0),
+                    'windspeed': day_data.get('windspeed', 0.0),
+                    'cloudcover': day_data.get('cloudcover', 0.0)
                 })
             
-            if forecasts:
-                return pd.DataFrame(forecasts).sort_values('datetime')
-            else:
-                logger.warning("No forecast data received, using mock data")
-                return self._generate_mock_forecast(days)
+            df = pd.DataFrame(forecasts).sort_values('datetime')
+            # Cache the forecast frame? (Logic omitted for brevity, focusing on Current Weather cache)
+            return df
             
         except Exception as e:
-            logger.warning(f"Error fetching forecast from Visual Crossing: {e}")
-            # Fallback to mock if API fails
-            return self._generate_mock_forecast(days)
+            logger.error(f"Error fetching forecast: {e}")
+            return self._generate_seasonal_mock_forecast(days)
     
-    def _generate_mock_forecast(self, days: int) -> pd.DataFrame:
-        """Generate mock forecast data for testing"""
+    def _save_to_cache(self, location: str, data: Dict):
+        """Save latest successful weather data"""
+        try:
+            cache = {}
+            if os.path.exists(self.cache_file):
+                with open(self.cache_file, 'r') as f:
+                    cache = json.load(f)
+            
+            # Key by generic location name if coords are used, or normalized string
+            key = "last_known" 
+            cache[key] = data
+            
+            with open(self.cache_file, 'w') as f:
+                json.dump(cache, f)
+        except Exception as e:
+            logger.warning(f"Failed to cache weather: {e}")
+
+    def _get_fallback_weather(self, location: str) -> Dict:
+        """
+        Smart Fallback: 
+        1. Try Cache (Last 24h)
+        2. Generate Seasonal Mock (Realistic for Maharashtra)
+        """
+        # 1. Try Cache
+        try:
+            if os.path.exists(self.cache_file):
+                with open(self.cache_file, 'r') as f:
+                    cache = json.load(f)
+                    if "last_known" in cache:
+                        data = cache["last_known"]
+                        data['source'] = 'Cached (Offline)'
+                        # If cache is very old (> 24h), maybe adjust it? 
+                        # For now, just return it as "Last Known State" which is legitimate fallback.
+                        logger.info("Using cached weather data")
+                        return data
+        except:
+            pass
+            
+        # 2. Seasonal Mock Generation
+        logger.info("Cache miss/invalid. Generating Seasonal Mock.")
+        return self._generate_seasonal_current()
+
+    def _generate_seasonal_current(self) -> Dict:
+        """Generate realistic current weather based on Month (Pune/MH context)"""
+        month = datetime.now().month
+        
+        # Baselines: (Temp, Humidity, RainProb)
+        if month in [11, 12, 1, 2]: # Winter
+            base_temp, base_hum, rain_prob = 22.0, 45.0, 0.05
+        elif month in [3, 4, 5]: # Summer
+            base_temp, base_hum, rain_prob = 34.0, 35.0, 0.10
+        elif month in [6, 7, 8, 9]: # Monsoon
+            base_temp, base_hum, rain_prob = 26.0, 85.0, 0.80
+        else: # Post-Monsoon (Oct)
+            base_temp, base_hum, rain_prob = 29.0, 60.0, 0.30
+            
+        # Add slight noise
+        temp = base_temp + np.random.uniform(-2, 2)
+        hum = base_hum + np.random.uniform(-5, 5)
+        rain = 0.0
+        if np.random.random() < rain_prob:
+            rain = np.random.uniform(2.0, 15.0) if month in [6,7,8,9] else np.random.uniform(0.5, 5.0)
+            
+        return {
+            'location': 'Pune (Offline Est.)',
+            'state': 'Maharashtra',
+            'temperature': round(temp, 1),
+            'humidity': round(hum, 1),
+            'rainfall': round(rain, 1),
+            'wind_speed': round(np.random.uniform(3, 12), 1),
+            'datetime': datetime.now().isoformat(),
+            'source': 'Seasonal Model (Offline)'
+        }
+
+    def _generate_seasonal_mock_forecast(self, days: int) -> pd.DataFrame:
+        """Generate smooth seasonal forecast"""
+        base = self._generate_seasonal_current()
+        start_temp = base['temperature']
+        
         dates = pd.date_range(start=datetime.now(), periods=days, freq='D')
         forecasts = []
         
+        current_temp = start_temp
+        
         for date in dates:
+            # Random walk for realism
+            current_temp += np.random.uniform(-1.5, 1.5)
+            
+            # Bounds check based on season
+            month = date.month
+            if month in [3,4,5]: current_temp = max(25, min(42, current_temp))
+            elif month in [11,12,1,2]: current_temp = max(10, min(32, current_temp))
+            else: current_temp = max(20, min(35, current_temp))
+
+            rain = 0.0
+            is_monsoon = month in [6,7,8,9]
+            if is_monsoon and np.random.random() > 0.3:
+                 rain = np.random.uniform(5, 50)
+            
             forecasts.append({
                 'datetime': date,
-                'tempmax': 32.0 + np.random.uniform(-2, 2),
-                'tempmin': 22.0 + np.random.uniform(-2, 2),
-                'humidity': 65.0 + np.random.uniform(-10, 10),
-                'precip': 0.0 if np.random.random() > 0.3 else np.random.uniform(0, 15),
-                'wind_speed': 5.0 + np.random.uniform(-2, 2)
+                'temp': current_temp,
+                'tempmax': current_temp + 6,
+                'tempmin': current_temp - 5,
+                'humidity': 80 if is_monsoon else 40,
+                'precip': rain,
+                'windspeed': 5.0 + np.random.uniform(-2, 2)
             })
             
         return pd.DataFrame(forecasts)
-    
-    def _get_fallback_weather(self, location: str) -> Dict:
-        """Fallback to local CSV data if API fails"""
-        try:
-            # Try to load from local CSV files
-            import glob
-            csv_files = glob.glob("*.csv")
-            
-            for file in csv_files:
-                if location.lower() in file.lower():
-                    df = pd.read_csv(file)
-                    latest = df.iloc[-1]
-                    
-                    return {
-                        'location': location,
-                        'temperature': float(latest.get('temperature', latest.get('temp', 25))),
-                        'humidity': float(latest.get('humidity', 70)),
-                        'rainfall': float(latest.get('precipitation', latest.get('precip', 0))),
-                        'wind_speed': float(latest.get('wind_speed', 5)),
-                        'datetime': datetime.now().isoformat(),
-                        'source': 'local_csv'
-                    }
-            
-            # Ultimate fallback - typical Maharashtra values
-            return {
-                'location': location,
-                'temperature': 28.0,
-                'humidity': 65.0,
-                'rainfall': 0.0,
-                'wind_speed': 5.0,
-                'datetime': datetime.now().isoformat(),
-                'source': 'default'
-            }
-            
-        except Exception as e:
-            logger.error(f"Fallback weather also failed: {e}")
-            return {}
 
 
 class FertilizerDataFetcher:

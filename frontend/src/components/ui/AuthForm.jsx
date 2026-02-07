@@ -134,7 +134,7 @@ export function AuthForm({
 
                     <NeonButton
                         type="submit"
-                        disabled={isLoading || phone.length < 10}
+                        disabled={isLoading}
                         variant="solid"
                         className="w-full shadow-lg shadow-green-600/20"
                     >
@@ -183,7 +183,7 @@ export function AuthForm({
 
                     <NeonButton
                         type="submit"
-                        disabled={isLoading || otp.length < 4}
+                        disabled={isLoading}
                         variant="solid"
                         className="w-full shadow-lg shadow-green-600/20"
                     >

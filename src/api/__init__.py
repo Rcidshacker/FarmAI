@@ -1,6 +1,6 @@
 """
 Package initialization for API module
 """
-from .app_v2 import app
+from .main import app
 
 __all__ = ['app']

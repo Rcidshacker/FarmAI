@@ -1,14 +1,13 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import DiseaseDetection from './pages/DiseaseDetection';
 import PestRisk from './pages/PestRisk';
 import SpraySchedule from './pages/SpraySchedule';
 import AIAssistant from './pages/AIAssistant';
 import AuthPage from './pages/AuthPage';
 import ProfilePage from './pages/ProfilePage';
+import SplashScreen from './pages/SplashScreen';
 import { Navbar } from './components/Navbar';
-
-import { useLocation } from 'react-router-dom';
 
 function Layout() {
   const location = useLocation();
@@ -35,6 +34,20 @@ function Layout() {
 }
 
 function App() {
+  const [showSplash, setShowSplash] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+    }, 3500);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (showSplash) {
+    return <SplashScreen />;
+  }
+
   return (
     <Router>
       <Layout />

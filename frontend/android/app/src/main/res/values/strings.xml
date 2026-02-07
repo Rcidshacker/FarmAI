@@ -1,7 +1,0 @@
-<?xml version='1.0' encoding='utf-8'?>
-<resources>
-    <string name="app_name">FarmAI</string>
-    <string name="title_activity_main">FarmAI</string>
-    <string name="package_name">com.farmai.app</string>
-    <string name="custom_url_scheme">com.farmai.app</string>
-</resources>

@@ -18,6 +18,11 @@ class SatelliteService:
         Tries to find a cloud-free satellite image from the last 30 days.
         Returns: (NDVI_Value, Date_Seen) or (None, None)
         """
+        import os
+        if os.getenv("OFFLINE_MODE", "False").lower() == "true":
+            logger.info("Offline Mode: Skipping Satellite Fetch")
+            return None, None
+
         import requests
         if not self.api_key or len(self.api_key) < 10:
             logger.warning("Satellite API Key missing or invalid")

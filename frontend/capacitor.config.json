@@ -1,0 +1,17 @@
+{
+  "appId": "com.farmai.app",
+  "appName": "FarmAI",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "http",
+    "cleartext": true,
+    "allowNavigation": [
+      "172.20.10.3"
+    ]
+  },
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
+}

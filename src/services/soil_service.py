@@ -38,6 +38,7 @@ class SoilService:
         Returns Clay %, pH, etc.
         """
         import requests
+        import os
         
         # Default Fallback
         profile = {
@@ -50,6 +51,16 @@ class SoilService:
             "organic_carbon": "Medium",
             "suitability": "Medium"
         }
+
+        if os.getenv("OFFLINE_MODE", "False").lower() == "true":
+            logger.info("Offline Mode: Using soil heuristics fallback.")
+            if 18.0 <= lat <= 20.0 and 73.5 <= lon <= 75.0: # Pune/Nashik
+                profile["type"] = "Heavy Clay" 
+                profile["clay_percent"] = 55.0
+            elif 16.0 <= lat <= 18.0 and 73.0 <= lon <= 74.5: # Kolhapur
+                profile["type"] = "Sandy Loam"
+                profile["clay_percent"] = 25.0
+            return profile
 
         try:
             # Live Fetch from ISRIC SoilGrids

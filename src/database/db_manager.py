@@ -200,23 +200,49 @@ class DatabaseManager:
             logger.error(f"Error getting records: {e}")
             return []
 
-    def delete_records(self, user_id: str = 'default_user', type: str = None):
+    def get_last_intervention(self, user_id: str = 'default_user', type: str = 'spray') -> Optional[Dict]:
+        """Get the most recent intervention of a specific type"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                SELECT * FROM spray_records 
+                WHERE user_id = ? AND type = ? 
+                ORDER BY created_at DESC 
+                LIMIT 1
+            ''', (user_id, type))
+            
+            row = cursor.fetchone()
+            conn.close()
+            
+            if row:
+                return dict(row)
+            return None
+        except Exception as e:
+            logger.error(f"Error getting last intervention: {e}")
+            return None
+
+    def clear_recent_interventions(self, user_id: str = 'default_user'):
+        """Delete recent interventions (Reset functionality)"""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
             
-            if type:
-                cursor.execute('DELETE FROM spray_records WHERE user_id = ? AND type = ?', (user_id, type))
-            else:
-                cursor.execute('DELETE FROM spray_records WHERE user_id = ?', (user_id,))
+            # Delete records from the last 24 hours or just all for simplicity of the feature "Reset Spray"
+            # As per requirement, we want to reset the effect, so let's clear sprays from the last 15 days
+            cursor.execute('''
+                DELETE FROM spray_records 
+                WHERE user_id = ? AND type = 'spray'
+            ''', (user_id,))
             
             conn.commit()
             conn.close()
             return True
         except Exception as e:
-            logger.error(f"Error deleting records: {e}")
+            logger.error(f"Error clearing interventions: {e}")
             return False
-            return []
     def _hash_password(self, password: str, salt: bytes = None) -> tuple[str, str]:
         """Hash a password using PBKDF2"""
         import hashlib

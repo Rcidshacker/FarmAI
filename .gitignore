@@ -31,7 +31,13 @@ data/farm_data.db
 .DS_Store
 Thumbs.db
 
+
 # Large Model Files (>100MB)
 models/disease_model_fold1.pth
 models/disease_model_fold2.pth
 # Optionally ignore all pth if preferred, but these are the blockers.
+
+# Build artifacts
+builds/
+*.apk
+*.aab

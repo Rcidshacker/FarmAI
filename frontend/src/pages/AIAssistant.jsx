@@ -8,21 +8,15 @@ import { useTranslation } from 'react-i18next';
 const AIAssistant = () => {
     const { t } = useTranslation();
     const [query, setQuery] = useState("");
-    const [messages, setMessages] = useState([
-        { type: 'bot', text: t('assistant.welcome') }
-    ]);
-    
-    // Update welcome message when language changes
-    useEffect(() => {
-        setMessages(prev => {
-            if (prev.length === 1 && prev[0].type === 'bot') {
-                return [{ type: 'bot', text: t('assistant.welcome') }];
-            }
-            return prev;
-        });
-    }, [t]);
-
+    const [messages, setMessages] = useState([]);
     const [loading, setLoading] = useState(false);
+
+    // Initialize greeting
+    useEffect(() => {
+        setMessages([
+            { type: 'bot', text: t('aiAssistant.welcome') }
+        ]);
+    }, [t]);
 
     const handleSend = async (text) => {
         // e.preventDefault(); // Not needed as it's not a form event anymore in this context, or handled by component
@@ -38,20 +32,13 @@ const AIAssistant = () => {
         setLoading(true);
 
         try {
-            const res = await chatAssistant(textToSend);
-            // Handle both response.data.response and direct response.response structures
-            const responseText = res.data?.response?.text || res.data?.text || "Unable to get response";
-            setMessages([...newMessages, { type: 'bot', text: responseText }]);
+            // Retrieve context from other pages (Pest Risk, etc.)
+            const context = JSON.parse(localStorage.getItem('farm_context') || '{}');
+
+            const res = await chatAssistant(textToSend, context);
+            setMessages([...newMessages, { type: 'bot', text: res.data.response.text }]);
         } catch (error) {
-            console.error("Assistant error:", error);
-            // Provide specific error message
-            let errorMsg = t('assistant.errorGeneric');
-            if (error.response?.status === 500) {
-                errorMsg = t('assistant.errorServer');
-            } else if (!navigator.onLine) {
-                errorMsg = t('assistant.errorOffline');
-            }
-            setMessages([...newMessages, { type: 'bot', text: errorMsg }]);
+            setMessages([...newMessages, { type: 'bot', text: t('aiAssistant.error') }]);
         } finally {
             setLoading(false);
         }
@@ -71,7 +58,7 @@ const AIAssistant = () => {
                         </div>
                     </div>
                 ))}
-                {loading && <div className="text-gray-400 text-sm ml-4 animate-pulse">Thinking...</div>}
+                {loading && <div className="text-gray-400 text-sm ml-4 animate-pulse">{t('aiAssistant.thinking')}</div>}
             </div>
 
             <div className="fixed bottom-[80px] left-0 right-0 px-4 py-3 bg-gradient-to-t from-gray-50 via-gray-50 to-transparent z-40 md:relative md:bottom-0 md:bg-none">
@@ -82,7 +69,7 @@ const AIAssistant = () => {
                             handleSend(value);
                         }}
                         disabled={loading}
-                        placeholder="Ask about 'Mealy Bug symptoms' or 'Imidacloprid dosage'..."
+                        placeholder={t('aiAssistant.placeholder')}
                     />
                 </div>
             </div>
@@ -94,7 +81,7 @@ const AIAssistant = () => {
                         onClick={() => handleSend("What is the weather outlook?")}
                         className="bg-white border border-green-100 shadow-lg shadow-green-900/10 text-green-700 px-4 py-2 rounded-full text-sm font-medium hover:bg-green-50 transition-colors animate-bounce"
                     >
-                        🌤️ Weather Outlook?
+                        {t('aiAssistant.weatherOutlook')}
                     </button>
                 </div>
             )}

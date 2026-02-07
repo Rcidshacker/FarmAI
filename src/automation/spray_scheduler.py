@@ -5,9 +5,6 @@ Learns optimal spray timing and application strategies based on:
 - Pest pressure history
 - Treatment effectiveness feedback
 - Economic costs
-- Chemical resistance management
-- Pre-harvest intervals (PHI)
-- Proper spray gaps based on chemical properties
 """
 
 import numpy as np
@@ -17,238 +14,28 @@ from typing import Dict, List, Tuple
 import json
 import pickle
 import logging
-from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
 
-class ChemicalKnowledgeBase:
-    """
-    Manages chemical database for intelligent spray scheduling
-    Includes resistance management, PHI, and spray intervals
-    """
-    
-    def __init__(self, knowledge_path: str = "knowledge_base/chemical_compositions.json"):
-        self.knowledge_path = Path(knowledge_path)
-        self.chemicals = {}
-        self.rotation_groups = {}
-        self.load_knowledge_base()
-    
-    def load_knowledge_base(self):
-        """Load chemical database from JSON with fallback"""
-        try:
-            # Try multiple paths
-            paths_to_try = [
-                self.knowledge_path,
-                Path("../knowledge_base/chemical_compositions.json"),
-                Path("../../knowledge_base/chemical_compositions.json"),
-            ]
-            
-            for path in paths_to_try:
-                if path.exists():
-                    with open(path, 'r') as f:
-                        data = json.load(f)
-                        
-                    # Parse chemical products
-                    if 'chemical_products' in data:
-                        self.chemicals = data['chemical_products']
-                    
-                    # Parse rotation groups
-                    if 'chemical_categories' in data:
-                        for category, groups in data['chemical_categories'].items():
-                            for group_name, group_info in groups.items():
-                                rotation_group = group_info.get('rotation_group', 'UN')
-                                if rotation_group not in self.rotation_groups:
-                                    self.rotation_groups[rotation_group] = []
-                                self.rotation_groups[rotation_group].extend(
-                                    group_info.get('active_ingredients', [])
-                                )
-                    
-                    logger.info(f"Loaded {len(self.chemicals)} chemicals from {path}")
-                    return
-            
-            # If no file found, use defaults
-            logger.warning(f"Knowledge base file not found at {self.knowledge_path}, using defaults")
-            self._load_default_chemicals()
-            
-        except Exception as e:
-            logger.error(f"Failed to load knowledge base: {e}")
-            self._load_default_chemicals()
-    
-    def _load_default_chemicals(self):
-        """Load default chemicals when file not found"""
-        self.chemicals = {
-            "imidacloprid_178sl": {
-                "name": "Imidacloprid 17.8% SL",
-                "dosage": "3-5 ml per 10L water",
-                "phi": 7,
-                "min_interval": 14,
-                "target_pests": ["Mealy Bug", "Scale Insects", "Whitefly"]
-            },
-            "thiamethoxam_25wg": {
-                "name": "Thiamethoxam 25% WG",
-                "dosage": "2-3 grams per 10L water",
-                "phi": 7,
-                "min_interval": 14,
-                "target_pests": ["Mealy Bug", "Whitefly", "Spider Mites"]
-            },
-            "neem_oil_1500ppm": {
-                "name": "Neem Oil 1500 PPM",
-                "dosage": "10-15 ml per 10L water",
-                "phi": 0,
-                "min_interval": 7,
-                "target_pests": ["Scale Insects", "Mites", "Whitefly"]
-            },
-            "fish_oil_rosin_soap": {
-                "name": "Fish Oil + Rosin Soap",
-                "dosage": "20 ml per 10L water",
-                "phi": 0,
-                "min_interval": 5,
-                "target_pests": ["Aphids", "Scale Insects", "Mites"]
-            }
-        }
-        logger.info("Using default chemicals database")
-    
-    def get_chemical_by_pest_pressure(self, pest_pressure: float, 
-                                     last_chemical: str = None,
-                                     days_since_spray: int = 0) -> Dict:
-        """
-        Select appropriate chemical based on pest pressure and resistance management
-        
-        Args:
-            pest_pressure: Current pest pressure (0-1)
-            last_chemical: Last chemical used
-            days_since_spray: Days since last application
-        
-        Returns:
-            Dict with chemical details and recommendations
-        """
-        # Determine severity level
-        if pest_pressure > 0.7:
-            severity = "high"
-        elif pest_pressure > 0.4:
-            severity = "moderate"
-        else:
-            severity = "low"
-        
-        # Select chemical based on severity and rotation
-        if severity == "high":
-            # High pressure: Use systemic insecticides
-            if last_chemical == "imidacloprid_178sl":
-                # Rotate to different group
-                chemical_id = "thiamethoxam_25wg"
-            else:
-                chemical_id = "imidacloprid_178sl"
-        elif severity == "moderate":
-            # Moderate: Use botanical/biological
-            chemical_id = "neem_oil_1500ppm"
-        else:
-            # Low: Preventive measures
-            chemical_id = "fish_oil_rosin_soap"
-        
-        # Get chemical details
-        chemical = self.chemicals.get(chemical_id, {})
-        
-        # Check if minimum spray interval has passed
-        min_interval = self._get_min_spray_interval(chemical_id)
-        if days_since_spray < min_interval:
-            return {
-                'action': 'wait',
-                'reason': f'Minimum spray interval not met ({days_since_spray}/{min_interval} days)',
-                'days_to_wait': min_interval - days_since_spray
-            }
-        
-        # Get PHI
-        phi = self._extract_phi(chemical)
-        
-        return {
-            'action': 'spray',
-            'chemical_id': chemical_id,
-            'chemical_name': chemical.get('trade_names', ['Unknown'])[0],
-            'active_ingredient': chemical.get('active_ingredient', 'Unknown'),
-            'dosage': chemical.get('dosage', {}).get('custard_apple', 'As per label'),
-            'category': chemical.get('category', 'Unknown'),
-            'target_pests': chemical.get('target_pests', []),
-            'preharvest_interval': phi,
-            'min_spray_interval': min_interval,
-            'mixing_compatibility': chemical.get('mixing_compatibility', 'Unknown'),
-            'precautions': chemical.get('precautions', [])
-        }
-    
-    def _get_min_spray_interval(self, chemical_id: str) -> int:
-        """Get minimum days between applications"""
-        intervals = {
-            'imidacloprid_178sl': 21,  # 3 weeks
-            'thiamethoxam_25wg': 21,
-            'mancozeb_75wp': 10,  # Can be more frequent
-            'carbendazim_50wp': 14,
-            'neem_oil_1500ppm': 7,  # Botanical, can be frequent
-            'copper_oxychloride_50wp': 10,
-            'fish_oil_rosin_soap': 5  # Preventive, frequent
-        }
-        return intervals.get(chemical_id, 14)  # Default 2 weeks
-    
-    def _extract_phi(self, chemical: Dict) -> int:
-        """Extract pre-harvest interval in days"""
-        phi_str = chemical.get('preharvest_interval', '15 days')
-        try:
-            return int(''.join(filter(str.isdigit, phi_str)))
-        except:
-            return 15  # Default
-    
-    def get_rotation_plan(self, num_sprays: int = 4) -> List[str]:
-        """
-        Get chemical rotation plan to prevent resistance
-        
-        Args:
-            num_sprays: Number of sprays in season
-        
-        Returns:
-            List of chemical IDs to use in sequence
-        """
-        # Rotation strategy: alternate between groups
-        rotation = []
-        groups = ['4A', 'M3', '1B', 'UN']  # Neonicotinoid, Dithiocarbamate, Organophosphate, Botanical
-        chemicals_by_group = {
-            '4A': ['imidacloprid_178sl', 'thiamethoxam_25wg'],
-            'M3': ['mancozeb_75wp'],
-            '1B': ['chlorpyrifos_20ec'],
-            'UN': ['neem_oil_1500ppm', 'fish_oil_rosin_soap']
-        }
-        
-        for i in range(num_sprays):
-            group = groups[i % len(groups)]
-            chemicals = chemicals_by_group.get(group, [])
-            if chemicals:
-                rotation.append(chemicals[i % len(chemicals)])
-        
-        return rotation
-
-
 class SpraySchedulerEnvironment:
     """
-    RL Environment for spray scheduling with proper chemical knowledge integration
+    RL Environment for spray scheduling
     
     State: [pest_pressure, weather_conditions, days_since_last_spray, growth_stage]
-    Action: [spray_now, wait_3_days, wait_7_days, wait_14_days]
-    Reward: Based on pest control effectiveness, cost, environmental impact, and resistance management
+    Action: [spray_now, wait_1_day, wait_3_days, wait_7_days]
+    Reward: Based on pest control effectiveness, cost, and environmental impact
     """
     
-    def __init__(self, weather_forecast: pd.DataFrame, initial_pest_pressure: float = 0.3,
-                 knowledge_base: ChemicalKnowledgeBase = None):
+    def __init__(self, weather_forecast: pd.DataFrame, initial_pest_pressure: float = 0.3):
         self.weather_forecast = weather_forecast
         self.current_day = 0
         self.pest_pressure = initial_pest_pressure
-        self.days_since_spray = 21  # Start with proper interval
+        self.days_since_spray = 14  # Assume last spray was 14 days ago
         self.growth_stage = 0  # 0: Vegetative, 1: Flowering, 2: Fruit Dev, 3: Maturity
         self.total_sprays = 0
         self.total_cost = 0
         self.disease_severity = 0.2
-        self.last_chemical = None
-        self.spray_history = []
-        
-        # Initialize knowledge base
-        self.kb = knowledge_base or ChemicalKnowledgeBase()
         
         # Economic parameters (in INR)
         self.spray_cost = 500  # Per application
@@ -258,12 +45,10 @@ class SpraySchedulerEnvironment:
         """Reset environment to initial state"""
         self.current_day = 0
         self.pest_pressure = 0.3
-        self.days_since_spray = 21
+        self.days_since_spray = 14
         self.total_sprays = 0
         self.total_cost = 0
         self.disease_severity = 0.2
-        self.last_chemical = None
-        self.spray_history = []
         return self.get_state()
     
     def get_state(self) -> np.ndarray:
@@ -291,16 +76,16 @@ class SpraySchedulerEnvironment:
         ], dtype=np.float32)
         
         return state
-        
+    
     def step(self, action: int) -> Tuple[np.ndarray, float, bool, Dict]:
         """
         Take action and return next state, reward, done, info
         
         Actions:
-        0: Spray now (with proper chemical selection)
-        1: Wait 3 days
-        2: Wait 7 days
-        3: Wait 14 days
+        0: Spray now
+        1: Wait 1 day
+        2: Wait 3 days
+        3: Wait 7 days
         """
         weather = self.weather_forecast.iloc[self.current_day]
         
@@ -333,69 +118,44 @@ class SpraySchedulerEnvironment:
         info = {}
         
         if action == 0:  # Spray now
-            # Get chemical recommendation from knowledge base
-            chem_recommendation = self.kb.get_chemical_by_pest_pressure(
-                self.pest_pressure, 
-                self.last_chemical,
-                self.days_since_spray
-            )
-            
-            # Check if spray is allowed (minimum interval check)
-            if chem_recommendation.get('action') == 'wait':
-                info['action_taken'] = 'Spray Rejected'
-                info['reason'] = chem_recommendation['reason']
-                reward -= 50  # Penalty for trying to spray too early
-                
+            # Check if weather is suitable for spraying
+            if rain > 5:
+                # Rain reduces effectiveness
+                effectiveness = 0.4
+                info['spray_quality'] = 'Poor (Rain)'
+            elif humidity > 85:
+                effectiveness = 0.6
+                info['spray_quality'] = 'Moderate (High Humidity)'
             else:
-                # Check if weather is suitable for spraying
-                if rain > 5:
-                    effectiveness = 0.4
-                    info['spray_quality'] = 'Poor (Rain)'
-                    reward -= 30  # Penalty for spraying in rain
-                elif humidity > 85:
-                    effectiveness = 0.6
-                    info['spray_quality'] = 'Moderate (High Humidity)'
-                elif temp > 35:
-                    effectiveness = 0.5
-                    info['spray_quality'] = 'Poor (High Temperature)'
-                    reward -= 20
-                else:
-                    effectiveness = 0.85
-                    info['spray_quality'] = 'Good'
-                
-                # Get chemical efficacy
-                chemical_efficacy = self._get_chemical_efficacy(chem_recommendation)
-                total_effectiveness = effectiveness * chemical_efficacy
-                
-                # Apply spray effect
-                self.pest_pressure = max(0, self.pest_pressure * (1 - total_effectiveness))
-                self.disease_severity = max(0, self.disease_severity * (1 - total_effectiveness * 0.8))
-                
-                # Update cost tracking
-                cost = chem_recommendation.get('cost_per_liter', 500) * 5  # Assume 5L per spray
-                self.total_cost += cost
-                self.total_sprays += 1
-                self.days_since_spray = 0
-                self.last_chemical = chem_recommendation.get('chemical_id')
-                
-                # Reward for effective spray
-                reward += 100 * total_effectiveness
-                
-                # Bonus for spraying at optimal time (0.5-0.7 pest pressure)
-                if 0.5 <= self.pest_pressure <= 0.7:
-                    reward += 60  # Optimal timing
-                elif self.pest_pressure > 0.7:
-                    reward += 40  # High pressure, needed but late
-                
-                # Bonus for proper chemical rotation
-                if self.total_sprays > 1:
-                    reward += 20  # Good resistance management
-                
-                info['action_taken'] = 'Sprayed'
-                info['chemical'] = chem_recommendation
-        
+                effectiveness = 0.85
+                info['spray_quality'] = 'Good'
+            
+            # Reduce pest pressure
+            self.pest_pressure = max(0, self.pest_pressure - effectiveness * 0.6)
+            self.disease_severity = max(0, self.disease_severity - effectiveness * 0.5)
+            
+            # Cost of spraying tracking
+            self.total_cost += self.spray_cost
+            self.total_sprays += 1
+            self.days_since_spray = 0
+            
+            # Reward Logic (Rebalanced)
+            # Base spray reward (efficacy)
+            reward += effectiveness * 50  
+            
+            # STRICT Cost penalty to discourage spamming
+            reward -= 100  
+            
+            # Contextual rewards
+            if self.pest_pressure > 0.6:
+                reward += 150  # Essential spray
+            elif self.pest_pressure < 0.3:
+                reward -= 200  # Wasteful spray penalty
+            
+            info['action_taken'] = 'Sprayed'
+            
         else:  # Wait
-            wait_days = [3, 7, 14][action - 1]  # Changed from [1, 3, 7] to [3, 7, 14]
+            wait_days = [1, 3, 7][action - 1]
             
             # Pest pressure increases while waiting
             for _ in range(wait_days):
@@ -407,16 +167,14 @@ class SpraySchedulerEnvironment:
                 if self.current_day >= len(self.weather_forecast):
                     break
             
-            # Reward for waiting (saving costs)
-            reward += 40 * wait_days
-            
-            # Smart penalty based on pest pressure
-            if self.pest_pressure > 0.8:
-                reward -= 80  # Critical pest pressure - should have sprayed
-            elif self.pest_pressure > 0.6:
-                reward -= 30  # High pressure - action needed soon
-            elif self.pest_pressure < 0.3:
-                reward += 30  # Good decision to wait - no need to spray
+            # Reward for saving money/environment
+            # Higher reward for longer waits if pressure is low
+            if self.pest_pressure < 0.5:
+                reward += 20 * wait_days
+            else:
+                 # Penalty for waiting when pressure is dangerously high
+                penalty = (self.pest_pressure - 0.5) * 100 * wait_days
+                reward -= penalty
             
             info['action_taken'] = f'Waited {wait_days} days'
         
@@ -442,25 +200,6 @@ class SpraySchedulerEnvironment:
         yield_loss = self.pest_pressure * self.yield_loss_per_pressure * len(self.weather_forecast)
         info['yield_loss'] = yield_loss
         info['total_cost'] = self.total_cost
-        info['total_sprays'] = self.total_sprays
-        info['pest_pressure'] = self.pest_pressure
-        
-        next_state = self.get_state()
-        
-        return next_state, reward, done, info
-    
-    def _get_chemical_efficacy(self, chem_recommendation: Dict) -> float:
-        """Get chemical efficacy multiplier based on type"""
-        category = chem_recommendation.get('category', 'Unknown')
-        
-        efficacy_map = {
-            'Insecticide': 0.95,
-            'Fungicide': 0.90,
-            'Botanical Insecticide': 0.75,
-            'Biocontrol': 0.65
-        }
-        
-        return efficacy_map.get(category, 0.80)
         info['total_sprays'] = self.total_sprays
         info['pest_pressure'] = self.pest_pressure
         
@@ -673,10 +412,10 @@ class QLearningSprayScheduler:
     def generate_schedule(self, weather_forecast: pd.DataFrame, 
                          initial_pest_pressure: float = 0.3) -> List[Dict]:
         """
-        Generate spray schedule for given weather forecast with proper chemical rotation
+        Generate spray schedule for given weather forecast
         
         Returns:
-            List of spray events with dates, chemicals, and reasoning
+            List of spray events with dates and reasoning
         """
         env = SpraySchedulerEnvironment(weather_forecast, initial_pest_pressure)
         state = env.reset()
@@ -686,48 +425,73 @@ class QLearningSprayScheduler:
         current_date = datetime.now()
         
         while not done:
-            action = self.get_action(state, training=False)
+            # --- HYBRID INTELLIGENCE FIX ---
+            # RL Agent + Expert Rules
+            # If we recently sprayed, force a "Wait" action to prevent daily spamming.
+            # This overcomes the state-discretization limits of the Q-Learning agent.
+            days_since_last_spray = env.days_since_spray
+            MIN_GAP_DAYS = 7
+            
+            if days_since_last_spray < MIN_GAP_DAYS:
+                 # Force "Wait 1 Day" if within cooldown period
+                 action = 1 
+            else:
+                 # Let AI decide based on its training
+                 action = self.get_action(state, training=False)
+            
             next_state, reward, done, info = env.step(action)
             
-            if info['action_taken'] == 'Sprayed' and 'chemical' in info:
-                chem = info['chemical']
-                
+            if info['action_taken'] == 'Sprayed':
+                # Determine recommendation based on pest pressure
+                if info['pest_pressure'] > 0.7:
+                    recommendation = "Apply Imidacloprid (0.5ml/L) or Thiamethoxam (0.25g/L)"
+                    details = {
+                        "chemical": "Imidacloprid 17.8 SL",
+                        "alternatives": ["Thiamethoxam 25 WG @ 0.25g/L", "Buprofezin 25 SC @ 1.25ml/L"],
+                        "type": "Chemical (Systemic)"
+                    }
+                elif info['pest_pressure'] > 0.4:
+                    recommendation = "Apply Neem Oil (10000 ppm) @ 2ml/L + Verticillium lecanii"
+                    details = {
+                        "chemical": "Azadirachtin 10000ppm",
+                        "alternatives": ["Pongamia Oil @ 3ml/L", "Beauveria bassiana @ 5g/L"],
+                        "type": "Biological/Botanical"
+                    }
+                else:
+                    recommendation = "Preventive: Apply Fish Oil Rosin Soap @ 2.5g/L"
+                    details = {
+                        "chemical": "Fish Oil Rosin Soap",
+                        "alternatives": ["Neem Oil 3000ppm @ 3ml/L"],
+                        "type": "Preventive"
+                    }
+
                 schedule.append({
                     'date': current_date + timedelta(days=env.current_day),
                     'action': 'Spray Application',
-                    'chemical_name': chem.get('chemical_name', 'Unknown'),
-                    'active_ingredient': chem.get('active_ingredient', 'Unknown'),
-                    'dosage': chem.get('dosage', 'As per label'),
-                    'target_pests': chem.get('target_pests', []),
-                    'preharvest_interval': chem.get('preharvest_interval', 15),
-                    'min_next_spray': chem.get('min_spray_interval', 14),
-                    'pest_pressure': round(info['pest_pressure'], 2),
+                    'recommendation': recommendation,
+                    'details': details,
+                    'pest_pressure': info['pest_pressure'],
                     'spray_quality': info['spray_quality'],
                     'weather': {
-                        'temp': round(weather_forecast.iloc[env.current_day].get('temp', 
+                        # Handle temp for display
+                        'temp': float(weather_forecast.iloc[env.current_day].get('temp', 
                                 (weather_forecast.iloc[env.current_day].get('tempmax', 0) + 
-                                 weather_forecast.iloc[env.current_day].get('tempmin', 0)) / 2), 1),
-                        'humidity': round(weather_forecast.iloc[env.current_day]['humidity'], 0),
-                        'rainfall': round(weather_forecast.iloc[env.current_day].get('precip', 0), 1)
+                                 weather_forecast.iloc[env.current_day].get('tempmin', 0)) / 2)),
+                        'humidity': float(weather_forecast.iloc[env.current_day]['humidity']),
+                        'rainfall': float(weather_forecast.iloc[env.current_day].get('precip', 0))
                     },
-                    'precautions': chem.get('precautions', []),
-                    'mixing_compatibility': chem.get('mixing_compatibility', 'Unknown'),
-                    'reasoning': f"Pest pressure: {info['pest_pressure']:.2f}, Quality: {info['spray_quality']}, "
-                                f"Chemical rotation: {chem.get('category', 'Unknown')}"
+                    'reasoning': f"Pest pressure: {info['pest_pressure']:.2f}, Quality: {info['spray_quality']}"
                 })
             
             state = next_state
         
-        # Add summary with recommendations
+        # Add summary
         schedule.append({
             'summary': {
-                'total_sprays': info['total_sprays'],
-                'total_cost': info['total_cost'],
-                'estimated_yield_loss': info['yield_loss'],
-                'final_pest_pressure': round(info['pest_pressure'], 2),
-                'spray_interval': f"{round(90 / max(1, info['total_sprays']))} days average",
-                'resistance_management': 'Chemical rotation applied' if info['total_sprays'] > 1 else 'Single application',
-                'chemicals_used': list(set([s['chemical_name'] for s in schedule if 'chemical_name' in s]))
+                'total_sprays': int(info['total_sprays']),
+                'total_cost': float(info['total_cost']),
+                'estimated_yield_loss': float(info['yield_loss']),
+                'final_pest_pressure': float(info['pest_pressure'])
             }
         })
         
@@ -776,110 +540,63 @@ class AutomatedSprayManager:
         Returns:
             Dict with schedule and recommendations
         """
-        try:
-            # Fetch weather forecast (integrate with IMD API)
-            from src.data_sources.external_data_fetcher import IMDWeatherFetcher
+        # Fetch weather forecast (integrate with IMD API)
+        from src.data_sources.external_data_fetcher import IMDWeatherFetcher
+        
+        weather_fetcher = IMDWeatherFetcher()
+        forecast_df = weather_fetcher.get_forecast(location, days=days_ahead)
+        
+        if forecast_df.empty:
+            logger.warning("Could not fetch forecast, using default")
+            # Generate dummy forecast
+            forecast_df = self._generate_dummy_forecast(days_ahead)
             
-            weather_fetcher = IMDWeatherFetcher()
-            forecast_df = weather_fetcher.get_forecast(location, days=days_ahead)
-            
-            # Ensure we have valid forecast data
-            if forecast_df is None or (isinstance(forecast_df, object) and hasattr(forecast_df, 'empty') and forecast_df.empty):
-                logger.warning("Could not fetch forecast, using default")
-                # Generate dummy forecast
-                forecast_df = self._generate_dummy_forecast(days_ahead)
-                
-            # ---------------------------------------------------------
-            # FIX APPLIED HERE: Ensure 'temp' column exists
-            # The RL Environment requires a specific 'temp' column.
-            # ---------------------------------------------------------
-            if 'temp' not in forecast_df.columns:
-                if 'tempmax' in forecast_df.columns and 'tempmin' in forecast_df.columns:
-                    # Calculate average temp from max/min
-                    forecast_df['temp'] = (forecast_df['tempmax'] + forecast_df['tempmin']) / 2
-                    logger.info("Calculated 'temp' column from tempmax/tempmin")
-                else:
-                    # Fallback default if completely missing
-                    logger.warning("'temp' column missing in forecast. Using default 28.0")
-                    forecast_df['temp'] = 28.0
-            # ---------------------------------------------------------
-                
-            # Integrate Biological Risk Model
-            try:
-                from src.models.biological_risk_model import BiologicalRiskModel
-                bio_model = BiologicalRiskModel()
-                # Ensure columns match what BiologicalRiskModel expects
-                # It expects: datetime, tempmax, tempmin, precip, humidity
-                # forecast_df usually has: datetime, temp, humidity, precip, wind_speed
-                
-                # Map columns if needed
-                if 'tempmax' not in forecast_df.columns:
-                    forecast_df['tempmax'] = forecast_df['temp'] + 5
-                    forecast_df['tempmin'] = forecast_df['temp'] - 5
-                
-                forecast_df = bio_model.calculate_risk_series(forecast_df)
-                logger.info("Biological risk scores integrated into forecast")
-            except Exception as e:
-                logger.error(f"Failed to integrate biological risk model: {e}")
-            
-            # Generate schedule
-            schedule_with_summary = self.scheduler.generate_schedule(forecast_df)
-            
-            # Separate schedule items from summary
-            if schedule_with_summary and len(schedule_with_summary) > 0:
-                # Last item contains summary
-                if isinstance(schedule_with_summary[-1], dict) and 'summary' in schedule_with_summary[-1]:
-                    schedule = schedule_with_summary[:-1]
-                    summary = schedule_with_summary[-1]['summary']
-                else:
-                    schedule = schedule_with_summary
-                    summary = {
-                        'total_sprays': 0,
-                        'total_cost': 0,
-                        'estimated_yield_loss': 0,
-                        'final_pest_pressure': 0,
-                        'spray_interval': 'N/A',
-                        'resistance_management': 'N/A',
-                        'chemicals_used': []
-                    }
+        # ---------------------------------------------------------
+        # FIX APPLIED HERE: Ensure 'temp' column exists
+        # The RL Environment requires a specific 'temp' column.
+        # ---------------------------------------------------------
+        if 'temp' not in forecast_df.columns:
+            if 'tempmax' in forecast_df.columns and 'tempmin' in forecast_df.columns:
+                # Calculate average temp from max/min
+                forecast_df['temp'] = (forecast_df['tempmax'] + forecast_df['tempmin']) / 2
+                logger.info("Calculated 'temp' column from tempmax/tempmin")
             else:
-                schedule = []
-                summary = {
-                    'total_sprays': 0,
-                    'total_cost': 0,
-                    'estimated_yield_loss': 0,
-                    'final_pest_pressure': 0,
-                    'spray_interval': 'N/A',
-                    'resistance_management': 'N/A',
-                    'chemicals_used': []
-                }
+                # Fallback default if completely missing
+                logger.warning("'temp' column missing in forecast. Using default 28.0")
+                forecast_df['temp'] = 28.0
+        # ---------------------------------------------------------
             
-            return {
-                'location': location,
-                'forecast_period': f"{days_ahead} days",
-                'schedule': schedule,
-                'summary': summary,
-                'created_at': datetime.now().isoformat()
-            }
+        # Integrate Biological Risk Model
+        try:
+            from src.models.biological_risk_model import BiologicalRiskModel
+            bio_model = BiologicalRiskModel()
+            # Ensure columns match what BiologicalRiskModel expects
+            # It expects: datetime, tempmax, tempmin, precip, humidity
+            # forecast_df usually has: datetime, temp, humidity, precip, wind_speed
+            
+            # Map columns if needed
+            if 'tempmax' not in forecast_df.columns:
+                forecast_df['tempmax'] = forecast_df['temp'] + 5
+                forecast_df['tempmin'] = forecast_df['temp'] - 5
+            
+            forecast_df = bio_model.calculate_risk_series(forecast_df)
+            logger.info("Biological risk scores integrated into forecast")
         except Exception as e:
-            logger.error(f"Error in create_schedule: {e}", exc_info=True)
-            # Return empty schedule instead of crashing
-            return {
-                'location': location,
-                'forecast_period': f"{days_ahead} days",
-                'schedule': [],
-                'summary': {
-                    'total_sprays': 0,
-                    'total_cost': 0,
-                    'estimated_yield_loss': 0,
-                    'final_pest_pressure': 0,
-                    'spray_interval': 'N/A',
-                    'resistance_management': 'N/A',
-                    'chemicals_used': []
-                },
-                'created_at': datetime.now().isoformat(),
-                'error': str(e)
-            }
+            logger.error(f"Failed to integrate biological risk model: {e}")
+        
+        # Generate schedule
+        schedule = self.scheduler.generate_schedule(forecast_df)
+        
+        # Update internal state (Fix for next_spray)
+        self.current_schedule = schedule[:-1]
+         
+        return {
+            'location': location,
+            'forecast_period': f"{days_ahead} days",
+            'schedule': schedule[:-1],  # Exclude summary
+            'summary': schedule[-1]['summary'],
+            'created_at': datetime.now().isoformat()
+        }
     
     def _generate_dummy_forecast(self, days: int) -> pd.DataFrame:
         """Generate dummy weather forecast for testing"""

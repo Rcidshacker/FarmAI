@@ -1,178 +1,150 @@
 import json
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 import logging
 import os
+import requests
+from dotenv import load_dotenv
+
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
 class AIAssistantService:
     """
-    AI Assistant for Farmers.
-    Uses Knowledge Base to answer questions about pests, fertilizers, and schedules.
+    Hybrid AI Assistant for Farmers.
+    - Online: Uses Llama 3.3 (via OpenRouter) for intelligent, context-aware answers.
+    - Offline: Uses local Knowledge Base for basic keyword matching.
     """
     
     def __init__(self):
-        # Try multiple paths for knowledge base (mobile and desktop)
-        self.kb_paths = [
-            Path("knowledge_base"),  # Desktop
-            Path("../knowledge_base"),  # From src context
-            Path("../../knowledge_base"),  # From nested context
-        ]
+        self.kb_path = Path("knowledge_base")
         self.chemicals = {}
         self.pests = {}
+        self.api_key = os.getenv("OPENROUTER_API_KEY")
+        self.model = "meta-llama/llama-3.3-70b-instruct:free"
         self._load_kb()
         
     def _load_kb(self):
-        """Load knowledge base from multiple possible paths"""
-        loaded = False
-        
-        for kb_path in self.kb_paths:
-            try:
-                chemical_file = kb_path / "chemical_compositions.json"
-                pest_file = kb_path / "pest_database.json"
-                
-                if chemical_file.exists():
-                    self.chemicals = json.loads(chemical_file.read_text())
-                    logger.info(f"Loaded chemicals from {chemical_file}")
-                    loaded = True
-                    
-                if pest_file.exists():
-                    self.pests = json.loads(pest_file.read_text())
-                    logger.info(f"Loaded pests from {pest_file}")
-                    loaded = True
-                    
-                if loaded:
-                    break
-                    
-            except Exception as e:
-                logger.debug(f"Could not load KB from {kb_path}: {e}")
-                continue
-        
-        # If files not found, use default inline knowledge base
-        if not self.chemicals or not self.pests:
-            logger.warning("Knowledge base files not found, using default inline knowledge")
-            self._load_default_kb()
-    
-    def _load_default_kb(self):
-        """Load default knowledge base inline for mobile/offline support"""
-        self.chemicals = {
-            "chemical_products": {
-                "Imidacloprid": {
-                    "name": "Imidacloprid",
-                    "type": "Insecticide",
-                    "target": ["Mealy Bug", "Scale Insects", "Aphids"],
-                    "dosage": "3-5 ml per 10 liters of water",
-                    "phi": 7,
-                    "precautions": "Do not use during flowering. Use protective equipment."
-                },
-                "Thiamethoxam": {
-                    "name": "Thiamethoxam",
-                    "type": "Insecticide",
-                    "target": ["Mealy Bug", "Whitefly", "Mites"],
-                    "dosage": "2-3 ml per 10 liters of water",
-                    "phi": 7,
-                    "precautions": "Rotate with other insecticides. Avoid spray during hot hours."
-                },
-                "Spirotetramat": {
-                    "name": "Spirotetramat",
-                    "type": "Acaricide/Insecticide",
-                    "target": ["Spider Mites", "Mealy Bug", "Scale Insects"],
-                    "dosage": "2 ml per 10 liters of water",
-                    "phi": 14,
-                    "precautions": "Systemic action. Requires translocation. Avoid mixing with oils."
-                },
-                "Copper Hydroxide": {
-                    "name": "Copper Hydroxide",
-                    "type": "Fungicide",
-                    "target": ["Fungal Diseases", "Bacterial Leaf Spots"],
-                    "dosage": "20 grams per 10 liters of water",
-                    "phi": 3,
-                    "precautions": "Use at correct concentrations. Avoid overdose. Copper toxicity risk."
-                },
-                "Propiconazole": {
-                    "name": "Propiconazole",
-                    "type": "Fungicide",
-                    "target": ["Powdery Mildew", "Leaf Spot", "Rust"],
-                    "dosage": "1 ml per 10 liters of water",
-                    "phi": 14,
-                    "precautions": "Systemic fungicide. Do not mix with sulfur products."
-                }
-            }
-        }
-        
-        self.pests = {
-            "Mealy Bug": {
-                "name": "Mealy Bug",
-                "symptoms": "White waxy coating on leaves and stems, yellowing leaves, sticky residue",
-                "control": "Use Imidacloprid or Spirotetramat. Maintain plant hygiene. Prune affected branches.",
-                "season": "Year-round, peaks in summer"
-            },
-            "Spider Mites": {
-                "name": "Spider Mites",
-                "symptoms": "Fine webbing on leaves, yellowing, leaf drop, stippling pattern",
-                "control": "Spray with neem oil or Spirotetramat. Increase humidity. Remove heavily infested leaves.",
-                "season": "Hot and dry weather, summer"
-            },
-            "Powdery Mildew": {
-                "name": "Powdery Mildew",
-                "symptoms": "White powder coating on leaves, distorted growth, premature drop",
-                "control": "Use sulfur dust or Propiconazole. Improve air circulation. Remove infected parts.",
-                "season": "Cool and humid conditions"
-            }
-        }
+        try:
+            if (self.kb_path / "chemical_compositions.json").exists():
+                self.chemicals = json.loads((self.kb_path / "chemical_compositions.json").read_text())
+            if (self.kb_path / "pest_database.json").exists():
+                self.pests = json.loads((self.kb_path / "pest_database.json").read_text())
+        except Exception as e:
+            logger.error(f"Error loading KB for Assistant: {e}")
 
     def get_response(self, query: str, context: Dict = None) -> Dict:
         """
-        Generate a response to a farmer's query.
+        Generate response using LLM if available, else Fallback.
         """
-        try:
-            query = query.lower()
-            response = {
-                "text": "I'm not sure about that. Please consult an expert.",
-                "related_topics": []
-            }
-            
-            # 1. Pest Identification/Info
-            for pest_name, data in self.pests.items():
-                if pest_name.lower() in query:
-                    symptoms = data.get('symptoms', 'Symptoms not available')
-                    control = data.get('control', 'No control info')
-                    response["text"] = f"**{pest_name}**: {symptoms}\n\n**Treatment**: {control}"
-                    response["related_topics"] = ["Chemical Control", "Organic Control"]
-                    return response
-
-            # 2. Chemical Info - Handle both direct dict and chemical_products structure
-            chemicals_to_search = self.chemicals
-            if "chemical_products" in self.chemicals:
-                chemicals_to_search = self.chemicals["chemical_products"]
-            
-            for chem_name, data in chemicals_to_search.items():
-                if isinstance(data, dict) and chem_name.lower() in query:
-                    targets = data.get('target', [])
-                    if isinstance(targets, list):
-                        targets_str = ', '.join(targets)
-                    else:
-                        targets_str = str(targets)
-                    dosage = data.get('dosage', 'Check label')
-                    response["text"] = f"**{chem_name}** is used for {targets_str}.\n\n**Dosage**: {dosage}"
-                    if "precautions" in data:
-                        response["text"] += f"\n\n**Precautions**: {data['precautions']}"
-                    return response
-                    
-            # 3. General Intents
-            if "weather" in query:
-                response["text"] = "I can help with weather. Please check the 'Pest Risk' tab for the latest forecast and weather updates."
-            elif "schedule" in query or "spray" in query:
-                response["text"] = "Your spray schedule depends on the current pest risk. Check the 'Schedule' tab to see your optimized spray plan."
-            elif "hello" in query or "hi" in query or "namaste" in query:
-                response["text"] = "Namaste! I am your Farm Assistant. Ask me about pests, fertilizers, or current weather conditions."
+        # Check for Offline Mode or Missing Key
+        is_offline = os.getenv("OFFLINE_MODE", "False").lower() == "true"
+        
+        if not is_offline and self.api_key:
+            try:
+                return self._get_llm_response(query, context)
+            except Exception as e:
+                logger.error(f"LLM Error: {e}. Switching to Offline Fallback.")
                 
-            return response
-        except Exception as e:
-            logger.error(f"Error in get_response: {e}")
-            return {
-                "text": "I encountered an error processing your query. Please try again.",
-                "related_topics": []
-            }
+        return self._get_offline_response(query)
 
+    def _get_llm_response(self, query: str, context: Dict) -> Dict:
+        """Call OpenRouter LLM"""
+        
+        # 1. Build System Prompt with Context
+        ctx_str = ""
+        if context:
+            loc = context.get('location', 'Unknown')
+            weather = context.get('weather', {})
+            soil = context.get('soil', {})
+            stage = context.get('crop_stage', 'Unknown')
+            
+            ctx_str = (
+                f"Current Context:\n"
+                f"- Location: {loc}\n"
+                f"- Crop Stage: {stage}\n"
+                f"- Weather: {weather.get('temp', 'N/A')}°C, {weather.get('humidity', 'N/A')}% Humidity, {weather.get('rainfall', 'N/A')}mm Rain\n"
+                f"- Soil: {soil.get('type', 'N/A')} ({soil.get('moisture', 'N/A')}% Moisture)\n"
+            )
+
+        system_prompt = (
+            "You are 'FarmAI', an expert agricultural consultant for Custard Apple (Sitaphal) farmers in Maharashtra, India. "
+            "Your goal is to provide practical, scientific, and cost-effective advice.\n"
+            "GUIDELINES:\n"
+            "1. Be concise but helpful. Avoid fluff.\n"
+            "2. Use the provided Context (Weather, Soil, Stage) to tailor your advice. "
+            "   (e.g., if it's raining, advise against spraying).\n"
+            "3. If suggesting chemicals, always mention dosage and safety.\n"
+            "4. Be polite and encouraging."
+        )
+
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"{ctx_str}\n\nUser Question: {query}"}
+        ]
+
+        # 2. API Call
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": "http://localhost:8000", # Required by OpenRouter
+            "X-Title": "FarmAI"
+        }
+        
+        data = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": 0.7,
+            "max_tokens": 500
+        }
+        
+        response = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers=headers,
+            json=data,
+            timeout=15
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            content = result['choices'][0]['message']['content']
+            return {
+                "text": content,
+                "source": "Llama 3.3 (Online)",
+                "related_topics": ["Pest Control", "Weather Management"] # Simplified for now
+            }
+        else:
+            raise Exception(f"API Failed: {response.status_code} - {response.text}")
+
+    def _get_offline_response(self, query: str) -> Dict:
+        """Legacy Keyword Matching (Offline Fallback)"""
+        query = query.lower()
+        response = {
+            "text": "I'm currently offline and couldn't find a specific answer in my local database. Please try connecting to the internet for AI assistance.",
+            "source": "Offline Database",
+            "related_topics": []
+        }
+        
+        # 1. Pest Identification/Info
+        for pest_name, data in self.pests.items():
+            if pest_name.lower() in query:
+                response["text"] = f"**{pest_name}** (Offline Info): {data.get('symptoms', 'Symptoms not available')}. \n\n**Treatment**: {data.get('control', 'No control info')}."
+                response["related_topics"] = ["Chemical Control", "Organic Control"]
+                return response
+
+        # 2. Chemical Info
+        for chem_name, data in self.chemicals.items():
+            if chem_name.lower() in query:
+                response["text"] = f"**{chem_name}** (Offline Info) is used for {', '.join(data.get('target', []))}. \n\n**Dosage**: {data.get('dosage', 'Check label')}."
+                return response
+                
+        # 3. General Intents
+        if "weather" in query:
+            response["text"] = "I cannot fetch live analysis offline, but you can check the 'Weather' tab for the cached forecast."
+        elif "schedule" in query or "spray" in query:
+            response["text"] = "Your spray schedule is available in the 'Plan' tab."
+        elif "hello" in query or "hi" in query:
+            response["text"] = "Namaste! I am your Offline Farm Assistant. I can answer basic questions about pests and chemicals needed."
+            
+        return response
