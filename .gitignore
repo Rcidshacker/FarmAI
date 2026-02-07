@@ -22,6 +22,8 @@ logs/
 training_results/
 *.log
 data/farm_data.db
+farm_data.db
+data/*.db
 
 # IDE settings
 .vscode/

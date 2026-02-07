@@ -1,7 +1,7 @@
 import sqlite3
 import os
 
-DB_PATH = 'farm_data.db'
+DB_PATH = 'data/farm_data.db'
 
 def migrate():
     if not os.path.exists(DB_PATH):
