@@ -1,8 +1,17 @@
 import pandas as pd
 import numpy as np
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 import logging
+
+# Add new optional imports
+try:
+    from .life_stage_tracker import LifeStageTracker
+    from .bud_break_detector import BudBreakDetector
+    ENHANCED_FEATURES = True
+except ImportError:
+    ENHANCED_FEATURES = False
+    logger.warning("Enhanced features not available")
 
 logger = logging.getLogger(__name__)
 
@@ -135,10 +144,10 @@ class BiologicalRiskModel:
         risk_score = 0.0
         
         if new_season_active:
-            daily_dd = max(0, min(avg_temp, 35) - 15)
+            daily_dd = max(0, min(avg_temp, 33) - 17)
             new_accumulated_dd += daily_dd
             
-            if precip > 80:
+            if precip > 135:
                 new_accumulated_dd *= 0.5
                 
             base_score = min(new_accumulated_dd / (self.dd_per_generation * 3.5), 1.0)
@@ -158,3 +167,45 @@ class BiologicalRiskModel:
             'accumulated_dd': new_accumulated_dd,
             'season_active': new_season_active
         }
+
+    def calculate_risk_with_life_stages(self, 
+                                        weather_df: pd.DataFrame,
+                                        clay_pct: float = 30.0) -> pd.DataFrame:
+        """
+        Enhanced risk calculation WITH life stage tracking.
+        Returns additional columns for stage info.
+        """
+        if not ENHANCED_FEATURES:
+            logger.warning("Life stage tracking not available, using basic model")
+            return self.calculate_risk_series(weather_df, clay_pct)
+        
+        df = self.calculate_risk_series(weather_df, clay_pct)  # Get base risk
+        
+        # Add life stage tracking
+        stage_tracker = LifeStageTracker()
+        bud_break_detector = BudBreakDetector()
+        
+        stage_info = []
+        bud_break_info = []
+        
+        for i, row in df.iterrows():
+            # Update life stage
+            daily_dd = max(0, min(row['avg_temp'], 33) - 17)  # Use updated params
+            stage_data = stage_tracker.update(daily_dd)
+            stage_info.append(stage_data)
+            
+            # Check bud break
+            bb_data = bud_break_detector.check_bud_break(
+                row['datetime'],
+                row['tempmax'],
+                df.loc[max(0, i-7):i, 'precip'].sum()  # Last 7 days rainfall
+            )
+            bud_break_info.append(bb_data)
+        
+        # Add columns
+        df['current_stage'] = [s['current_stage'] for s in stage_info]
+        df['optimal_spray_window'] = [s['optimal_spray_window'] for s in stage_info]
+        df['bud_break_phase'] = [b['phase'] for b in bud_break_info]
+        df['ant_transport_risk'] = [b['ant_transport_risk'] for b in bud_break_info]
+        
+        return df

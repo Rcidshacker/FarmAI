@@ -10,8 +10,31 @@ from src.api.dependencies import (
     get_forecasting_model, get_db_manager, get_biological_model
 )
 
+try:
+    from src.models.life_stage_tracker import LifeStageTracker
+    from src.models.bud_break_detector import BudBreakDetector
+    from src.models.natural_enemy_model import NaturalEnemyModel
+    from src.models.economic_threshold_mapper import EconomicThresholdMapper
+    ENHANCED_FEATURES = True
+except ImportError:
+    ENHANCED_FEATURES = False
+    logger.warning("Enhanced features not available")
+
+router = APIRouter()
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+def temperature_stress_modifier(temp_max: float) -> float:
+    """
+    Research: Field correlation shows NEGATIVE effect of high temps.
+    Temps >34°C cause heat stress and desiccation.
+    """
+    if temp_max > 37:
+        return 0.4  # Severe mortality
+    elif temp_max > 34:
+        return 0.7  # 30% population reduction
+    else:
+        return 1.0  # No stress
 
 # --- TWIN BRAIN CONSTANTS ---
 STAGE_TO_DENSITY_MAP = {
@@ -215,6 +238,34 @@ async def predict_pest_risk(request: PestRiskRequest):
                     raw_risk = raw_val
                     
                 raw_risk = max(0.0, min(1.0, raw_risk))
+            
+                # Apply temperature stress
+                temp_stress = temperature_stress_modifier(
+                    row_data.get('tempmax', row_data.get('temperature', 25))
+                )
+                raw_risk = raw_risk * temp_stress
+
+                # === ENHANCED FEATURES ===
+                if ENHANCED_FEATURES:
+                    # Economic threshold mapping
+                    threshold_mapper = EconomicThresholdMapper()
+                    economic_info = threshold_mapper.get_action_recommendation(
+                        raw_risk, 
+                        row_data.get('humidity', 50),
+                        row_data.get('temperature', 25)
+                    )
+                    
+                    # Natural enemy suppression
+                    natural_enemies = NaturalEnemyModel()
+                    # Check if biocontrol was applied (from database)
+                    # ... (add database queries for predator/fungal releases)
+                    biocontrol_effect = natural_enemies.calculate_total_biocontrol_effect(
+                        datetime.now(),
+                        row_data.get('humidity', 50),
+                        row_data.get('temperature', 25)
+                    )
+                    
+                    raw_risk *= biocontrol_effect['total_suppression_factor']
                 
             except Exception as e:
                 # Fallback
