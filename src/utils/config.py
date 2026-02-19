@@ -156,7 +156,7 @@ LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 
 # Model file names - PyTorch
 DISEASE_MODEL_NAME = 'disease_classifier_resnet18.pth'
-WEATHER_MODEL_NAME = 'weather_pest_predictor.pkl'
+WEATHER_MODEL_NAME = 'pest_forecast_xgb.joblib'
 AI_TREATMENT_MODEL_NAME = 'ai_treatment_recommender.pth'
 SPRAY_SCHEDULER_MODEL_NAME = 'spray_scheduler.pkl'
 
