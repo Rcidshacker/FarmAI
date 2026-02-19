@@ -66,6 +66,20 @@ class DatabaseManager:
                     timestamp TEXT
                 )
             ''')
+
+            # Biocontrol Applications Table
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS biocontrol_applications (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id TEXT NOT NULL,
+                    application_type TEXT NOT NULL,  -- 'predator' or 'fungal'
+                    application_date DATE NOT NULL,
+                    product_name TEXT,
+                    location_lat REAL,
+                    location_lon REAL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
             
             conn.commit()
             conn.close()
@@ -370,4 +384,31 @@ class DatabaseManager:
             return None
         except Exception as e:
             logger.error(f"Auth error: {e}")
+            return None
+
+    def get_last_biocontrol(self, user_id: str, application_type: str) -> Optional[Dict]:
+        """Get last biocontrol application. Returns None if table doesn't exist yet."""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            
+            # Check if table exists first (graceful degradation)
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='biocontrol_applications'")
+            if not cursor.fetchone():
+                return None
+                
+            cursor.execute('''
+                SELECT date(application_date) as date, product_name 
+                FROM biocontrol_applications 
+                WHERE user_id = ? AND application_type = ? 
+                ORDER BY application_date DESC LIMIT 1
+            ''', (user_id, application_type))
+            
+            row = cursor.fetchone()
+            conn.close()
+            
+            return dict(row) if row else None
+        except Exception as e:
+            logger.error(f"Error fetching biocontrol: {e}")
             return None

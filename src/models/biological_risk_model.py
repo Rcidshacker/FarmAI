@@ -3,6 +3,7 @@ import numpy as np
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 import logging
+logger = logging.getLogger(__name__)
 
 # Add new optional imports
 try:
@@ -12,8 +13,6 @@ try:
 except ImportError:
     ENHANCED_FEATURES = False
     logger.warning("Enhanced features not available")
-
-logger = logging.getLogger(__name__)
 
 class BiologicalRiskModel:
     """
@@ -112,7 +111,6 @@ class BiologicalRiskModel:
             risk_scores.append(current_risk)
             
         df['mealybug_risk_score'] = risk_scores
-        return df
         return df
 
     def calculate_single_day_risk(self, 

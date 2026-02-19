@@ -10,6 +10,9 @@ from src.api.dependencies import (
     get_forecasting_model, get_db_manager, get_biological_model
 )
 
+router = APIRouter()
+logger = logging.getLogger(__name__)
+
 try:
     from src.models.life_stage_tracker import LifeStageTracker
     from src.models.bud_break_detector import BudBreakDetector
@@ -19,10 +22,6 @@ try:
 except ImportError:
     ENHANCED_FEATURES = False
     logger.warning("Enhanced features not available")
-
-router = APIRouter()
-router = APIRouter()
-logger = logging.getLogger(__name__)
 
 def temperature_stress_modifier(temp_max: float) -> float:
     """
@@ -173,8 +172,8 @@ async def predict_pest_risk(request: PestRiskRequest):
         hardcoded_lon = 73.8567
         
         # --- TWIN BRAIN AUTOMATION ---
-        # 1. API Key (Provided by user)
-        api_key_to_use = request.api_key or "353f3e4822e9a30795881c42556a68b5"
+        # 1. API Key (Provided by user or env)
+        api_key_to_use = request.api_key or os.getenv("SATELLITE_API_KEY", "")
         
         # 2. Try Satellite
         final_rvi, source_msg, status_color = get_automated_vegetation(
@@ -245,7 +244,8 @@ async def predict_pest_risk(request: PestRiskRequest):
                 )
                 raw_risk = raw_risk * temp_stress
 
-                # === ENHANCED FEATURES ===
+            # === ENHANCED FEATURES ===
+                economic_info = None
                 if ENHANCED_FEATURES:
                     # Economic threshold mapping
                     threshold_mapper = EconomicThresholdMapper()
@@ -257,8 +257,24 @@ async def predict_pest_risk(request: PestRiskRequest):
                     
                     # Natural enemy suppression
                     natural_enemies = NaturalEnemyModel()
+                    
                     # Check if biocontrol was applied (from database)
-                    # ... (add database queries for predator/fungal releases)
+                    try:
+                        db_mgr = get_db_manager()
+                        predator_record = db_mgr.get_last_biocontrol("default_user", "predator")
+                        fungal_record = db_mgr.get_last_biocontrol("default_user", "fungal")
+                        
+                        if predator_record:
+                            natural_enemies.set_predator_release(
+                                datetime.fromisoformat(predator_record['date'])
+                            )
+                        if fungal_record:
+                            natural_enemies.set_fungal_application(
+                                datetime.fromisoformat(fungal_record['date'])
+                            )
+                    except Exception as db_err:
+                         logger.warning(f"Failed to fetch biocontrol records: {db_err}")
+
                     biocontrol_effect = natural_enemies.calculate_total_biocontrol_effect(
                         datetime.now(),
                         row_data.get('humidity', 50),
@@ -269,7 +285,9 @@ async def predict_pest_risk(request: PestRiskRequest):
                 
             except Exception as e:
                 # Fallback
+                logger.error(f"Forecasting model failed, using fallback risk: {e}", exc_info=True)
                 raw_risk = 0.3
+                economic_info = None
 
             # B) SOIL PENALTY (Biology)
             soil_suitability = math.exp(-0.025 * clay_pct)
@@ -298,6 +316,7 @@ async def predict_pest_risk(request: PestRiskRequest):
                 "soil_mod": soil_multiplier,
                 "fused_enkf": fused, 
                 "protection_score": protection_factor,
+                "economic_info": economic_info,
                 "final": min(1.0, max(0.0, final_pipeline_risk))
             }
 
@@ -324,6 +343,7 @@ async def predict_pest_risk(request: PestRiskRequest):
                 "ai_score": today_calc['raw_ai'] * 100,
                 "soil_multiplier": today_calc['soil_mod'],
                 "enkf_fused_score": today_calc['fused_enkf'] * 100,
+                "economic_recommendation": today_calc.get('economic_info'),
                 "factors": {
                     "crop_stage_mod": stage_mod,
                     "soil_clay_pct": clay_pct,
