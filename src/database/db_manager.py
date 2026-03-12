@@ -27,6 +27,10 @@ class DatabaseManager:
                 CREATE TABLE IF NOT EXISTS users (
                     user_id TEXT PRIMARY KEY,
                     name TEXT,
+                    email TEXT,
+                    password_hash TEXT,
+                    salt TEXT,
+                    phone TEXT,
                     location_name TEXT,
                     latitude REAL,
                     longitude REAL,
@@ -229,7 +233,7 @@ class DatabaseManager:
             cursor.execute('''
                 SELECT * FROM spray_records 
                 WHERE user_id = ? AND type = ? 
-                ORDER BY created_at DESC 
+                ORDER BY date DESC 
                 LIMIT 1
             ''', (user_id, type))
             
