@@ -1,7 +1,10 @@
 from pydantic import BaseModel
 from typing import Optional, List, Dict
 
-# Pydantic models for request/response
+# Chat and Assistant Models
+class ChatRequest(BaseModel):
+    query: str
+    context: Optional[Dict] = None
 class WeatherConditions(BaseModel):
     temp: float
     humidity: float

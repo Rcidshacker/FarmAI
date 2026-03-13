@@ -14,7 +14,7 @@ os.environ["OFFLINE_MODE"] = "True"
 
 # Import Dependencies and Routers
 from src.api.routes import (
-    system, auth, disease, pest, treatment, assistant, feedback, weather
+    system, auth, disease, pest, treatment, assistant, feedback, weather, enhanced_assistant
 )
 from src.api.dependencies import (
     get_db_manager, get_disease_classifier, get_weather_predictor,
@@ -79,6 +79,7 @@ app.include_router(pest.router, tags=["Pest Prediction"])
 app.include_router(treatment.router, tags=["Treatment & Scheduling"])
 app.include_router(weather.router, tags=["Weather & Environment"])
 app.include_router(assistant.router, tags=["AI Assistant"])
+app.include_router(enhanced_assistant.router, tags=["Enhanced Assistant"])
 app.include_router(feedback.router, tags=["Feedback Loop"])
 
 if __name__ == "__main__":
