@@ -7,6 +7,8 @@ import AIAssistant from './pages/AIAssistant';
 import AuthPage from './pages/AuthPage';
 import ProfilePage from './pages/ProfilePage';
 import SplashScreen from './pages/SplashScreen';
+import EnhancedChatbot from './pages/EnhancedChatbot';
+import FarmerDashboard from './pages/FarmerDashboard';
 import { Navbar } from './components/Navbar';
 
 function Layout() {
@@ -27,6 +29,8 @@ function Layout() {
           <Route path="/spray-schedule" element={<SpraySchedule />} />
           <Route path="/assistant" element={<AIAssistant />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/chatbot" element={<EnhancedChatbot />} />
+          <Route path="/dashboard" element={<FarmerDashboard />} />
         </Routes>
       </main>
     </div>
